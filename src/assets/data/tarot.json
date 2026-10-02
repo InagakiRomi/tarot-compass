@@ -1,0 +1,397 @@
+[
+  {
+    "cardId": 0,
+    "cardName": "愚者",
+    "cardUrl": "tarot00.jpg"
+  },
+  {
+    "cardId": 1,
+    "cardName": "魔術師",
+    "cardUrl": "tarot01.jpg"
+  },
+  {
+    "cardId": 2,
+    "cardName": "女祭司",
+    "cardUrl": "tarot02.jpg"
+  },
+  {
+    "cardId": 3,
+    "cardName": "皇后",
+    "cardUrl": "tarot03.jpg"
+  },
+  {
+    "cardId": 4,
+    "cardName": "皇帝",
+    "cardUrl": "tarot04.jpg"
+  },
+  {
+    "cardId": 5,
+    "cardName": "教皇",
+    "cardUrl": "tarot05.jpg"
+  },
+  {
+    "cardId": 6,
+    "cardName": "戀人",
+    "cardUrl": "tarot06.jpg"
+  },
+  {
+    "cardId": 7,
+    "cardName": "戰車",
+    "cardUrl": "tarot07.jpg"
+  },
+  {
+    "cardId": 8,
+    "cardName": "力量",
+    "cardUrl": "tarot08.jpg"
+  },
+  {
+    "cardId": 9,
+    "cardName": "隱者",
+    "cardUrl": "tarot09.jpg"
+  },
+  {
+    "cardId": 10,
+    "cardName": "命運之輪",
+    "cardUrl": "tarot10.jpg"
+  },
+  {
+    "cardId": 11,
+    "cardName": "正義",
+    "cardUrl": "tarot11.jpg"
+  },
+  {
+    "cardId": 12,
+    "cardName": "倒吊人",
+    "cardUrl": "tarot12.jpg"
+  },
+  {
+    "cardId": 13,
+    "cardName": "死神",
+    "cardUrl": "tarot13.jpg"
+  },
+  {
+    "cardId": 14,
+    "cardName": "節制",
+    "cardUrl": "tarot14.jpg"
+  },
+  {
+    "cardId": 15,
+    "cardName": "惡魔",
+    "cardUrl": "tarot15.jpg"
+  },
+  {
+    "cardId": 16,
+    "cardName": "高塔",
+    "cardUrl": "tarot16.jpg"
+  },
+  {
+    "cardId": 17,
+    "cardName": "星星",
+    "cardUrl": "tarot17.jpg"
+  },
+  {
+    "cardId": 18,
+    "cardName": "月亮",
+    "cardUrl": "tarot18.jpg"
+  },
+  {
+    "cardId": 19,
+    "cardName": "太陽",
+    "cardUrl": "tarot19.jpg"
+  },
+  {
+    "cardId": 20,
+    "cardName": "審判",
+    "cardUrl": "tarot20.jpg"
+  },
+  {
+    "cardId": 21,
+    "cardName": "世界",
+    "cardUrl": "tarot21.jpg"
+  },
+  {
+    "cardId": 22,
+    "cardName": "權杖一",
+    "cardUrl": "tarot22.jpg"
+  },
+  {
+    "cardId": 23,
+    "cardName": "權杖二",
+    "cardUrl": "tarot23.jpg"
+  },
+  {
+    "cardId": 24,
+    "cardName": "權杖三",
+    "cardUrl": "tarot24.jpg"
+  },
+  {
+    "cardId": 25,
+    "cardName": "權杖四",
+    "cardUrl": "tarot25.jpg"
+  },
+  {
+    "cardId": 26,
+    "cardName": "權杖五",
+    "cardUrl": "tarot26.jpg"
+  },
+  {
+    "cardId": 27,
+    "cardName": "權杖六",
+    "cardUrl": "tarot27.jpg"
+  },
+  {
+    "cardId": 28,
+    "cardName": "權杖七",
+    "cardUrl": "tarot28.jpg"
+  },
+  {
+    "cardId": 29,
+    "cardName": "權杖八",
+    "cardUrl": "tarot29.jpg"
+  },
+  {
+    "cardId": 30,
+    "cardName": "權杖九",
+    "cardUrl": "tarot30.jpg"
+  },
+  {
+    "cardId": 31,
+    "cardName": "權杖十",
+    "cardUrl": "tarot31.jpg"
+  },
+  {
+    "cardId": 32,
+    "cardName": "權杖侍衛",
+    "cardUrl": "tarot32.jpg"
+  },
+  {
+    "cardId": 33,
+    "cardName": "權杖騎士",
+    "cardUrl": "tarot33.jpg"
+  },
+  {
+    "cardId": 34,
+    "cardName": "權杖皇后",
+    "cardUrl": "tarot34.jpg"
+  },
+  {
+    "cardId": 35,
+    "cardName": "權杖國王",
+    "cardUrl": "tarot35.jpg"
+  },
+  {
+    "cardId": 36,
+    "cardName": "聖杯一",
+    "cardUrl": "tarot36.jpg"
+  },
+  {
+    "cardId": 37,
+    "cardName": "聖杯二",
+    "cardUrl": "tarot37.jpg"
+  },
+  {
+    "cardId": 38,
+    "cardName": "聖杯三",
+    "cardUrl": "tarot38.jpg"
+  },
+  {
+    "cardId": 39,
+    "cardName": "聖杯四",
+    "cardUrl": "tarot39.jpg"
+  },
+  {
+    "cardId": 40,
+    "cardName": "聖杯五",
+    "cardUrl": "tarot40.jpg"
+  },
+  {
+    "cardId": 41,
+    "cardName": "聖杯六",
+    "cardUrl": "tarot41.jpg"
+  },
+  {
+    "cardId": 42,
+    "cardName": "聖杯七",
+    "cardUrl": "tarot42.jpg"
+  },
+  {
+    "cardId": 43,
+    "cardName": "聖杯八",
+    "cardUrl": "tarot43.jpg"
+  },
+  {
+    "cardId": 44,
+    "cardName": "聖杯九",
+    "cardUrl": "tarot44.jpg"
+  },
+  {
+    "cardId": 45,
+    "cardName": "聖杯十",
+    "cardUrl": "tarot45.jpg"
+  },
+  {
+    "cardId": 46,
+    "cardName": "聖杯侍衛",
+    "cardUrl": "tarot46.jpg"
+  },
+  {
+    "cardId": 47,
+    "cardName": "聖杯騎士",
+    "cardUrl": "tarot47.jpg"
+  },
+  {
+    "cardId": 48,
+    "cardName": "聖杯皇后",
+    "cardUrl": "tarot48.jpg"
+  },
+  {
+    "cardId": 49,
+    "cardName": "聖杯國王",
+    "cardUrl": "tarot49.jpg"
+  },
+  {
+    "cardId": 50,
+    "cardName": "寶劍一",
+    "cardUrl": "tarot50.jpg"
+  },
+  {
+    "cardId": 51,
+    "cardName": "寶劍二",
+    "cardUrl": "tarot51.jpg"
+  },
+  {
+    "cardId": 52,
+    "cardName": "寶劍三",
+    "cardUrl": "tarot52.jpg"
+  },
+  {
+    "cardId": 53,
+    "cardName": "寶劍四",
+    "cardUrl": "tarot53.jpg"
+  },
+  {
+    "cardId": 54,
+    "cardName": "寶劍五",
+    "cardUrl": "tarot54.jpg"
+  },
+  {
+    "cardId": 55,
+    "cardName": "寶劍六",
+    "cardUrl": "tarot55.jpg"
+  },
+  {
+    "cardId": 56,
+    "cardName": "寶劍七",
+    "cardUrl": "tarot56.jpg"
+  },
+  {
+    "cardId": 57,
+    "cardName": "寶劍八",
+    "cardUrl": "tarot57.jpg"
+  },
+  {
+    "cardId": 58,
+    "cardName": "寶劍九",
+    "cardUrl": "tarot58.jpg"
+  },
+  {
+    "cardId": 59,
+    "cardName": "寶劍十",
+    "cardUrl": "tarot59.jpg"
+  },
+  {
+    "cardId": 60,
+    "cardName": "寶劍侍衛",
+    "cardUrl": "tarot60.jpg"
+  },
+  {
+    "cardId": 61,
+    "cardName": "寶劍騎士",
+    "cardUrl": "tarot61.jpg"
+  },
+  {
+    "cardId": 62,
+    "cardName": "寶劍皇后",
+    "cardUrl": "tarot62.jpg"
+  },
+  {
+    "cardId": 63,
+    "cardName": "寶劍國王",
+    "cardUrl": "tarot63.jpg"
+  },
+  {
+    "cardId": 64,
+    "cardName": "錢幣一",
+    "cardUrl": "tarot64.jpg"
+  },
+  {
+    "cardId": 65,
+    "cardName": "錢幣二",
+    "cardUrl": "tarot65.jpg"
+  },
+  {
+    "cardId": 66,
+    "cardName": "錢幣三",
+    "cardUrl": "tarot66.jpg"
+  },
+  {
+    "cardId": 67,
+    "cardName": "錢幣四",
+    "cardUrl": "tarot67.jpg"
+  },
+  {
+    "cardId": 68,
+    "cardName": "錢幣五",
+    "cardUrl": "tarot68.jpg"
+  },
+  {
+    "cardId": 69,
+    "cardName": "錢幣六",
+    "cardUrl": "tarot69.jpg"
+  },
+  {
+    "cardId": 70,
+    "cardName": "錢幣七",
+    "cardUrl": "tarot70.jpg"
+  },
+  {
+    "cardId": 71,
+    "cardName": "錢幣八",
+    "cardUrl": "tarot71.jpg"
+  },
+  {
+    "cardId": 72,
+    "cardName": "錢幣九",
+    "cardUrl": "tarot72.jpg"
+  },
+  {
+    "cardId": 73,
+    "cardName": "錢幣十",
+    "cardUrl": "tarot73.jpg"
+  },
+  {
+    "cardId": 74,
+    "cardName": "錢幣侍衛",
+    "cardUrl": "tarot74.jpg"
+  },
+  {
+    "cardId": 75,
+    "cardName": "錢幣騎士",
+    "cardUrl": "tarot75.jpg"
+  },
+  {
+    "cardId": 76,
+    "cardName": "錢幣皇后",
+    "cardUrl": "tarot76.jpg"
+  },
+  {
+    "cardId": 77,
+    "cardName": "錢幣國王",
+    "cardUrl": "tarot77.jpg"
+  },
+  {
+    "cardId": 78,
+    "cardName": "",
+    "cardUrl": "tarotBack.jpg"
+  }
+]
