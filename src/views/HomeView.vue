@@ -13,8 +13,12 @@ const cards = ref<TarotCardData[]>(
   Array.from({ length: CARD_COUNT }, () => backCard),
 );
 
+/** 每次抽牌遞增，讓同一位置的同一張牌也重新掛載並重播翻牌 */
+const drawId = ref(0);
+
 /** 抽牌 */
 function drawCards() {
+  drawId.value += 1;
   cards.value = draw(CARD_COUNT);
 }
 </script>
@@ -24,7 +28,7 @@ function drawCards() {
     <div class="flex flex-wrap items-start justify-center gap-4">
       <TarotCard
         v-for="(card, index) in cards"
-        :key="`${card.cardId}-${index}`"
+        :key="`${drawId}-${index}-${card.cardId}`"
         :card="card"
       />
     </div>
