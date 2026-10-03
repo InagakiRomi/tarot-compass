@@ -12,7 +12,8 @@
     "convert:tarot": "node scripts/convert-tarot.ts"
   },
   "dependencies": {
-    "@lucide/vue": "^1.47.0",
+    "@lucide/vue": "^1.50.0",
+    "@phosphor-icons/vue": "^2.2.1",
     "@tailwindcss/vite": "^4.3.3",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",

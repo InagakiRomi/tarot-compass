@@ -95,6 +95,7 @@ export function useTarotDeck() {
 
   return {
     backCard,
+    deckSize: deck.length,
     draw,
   };
 }

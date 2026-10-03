@@ -75,7 +75,7 @@ const isBack = computed(
     <!-- 翻牌後顯示牌名 -->
     <p
       v-if="!isBack"
-      class="absolute inset-x-0 top-full mt-2 text-center text-sm leading-tight font-medium"
+      class="absolute inset-x-0 top-full mt-2 text-center text-base leading-tight font-medium"
     >
       {{ card.cardName }}
     </p>
