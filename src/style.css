@@ -41,6 +41,33 @@
   * {
     @apply border-border outline-ring/50;
   }
+  :root {
+    --bg-dark: #0d0818;
+    --bg-purple: #181026;
+    --board-top: #2a1428;
+    --board-bottom: #160c19;
+    --card-dark: #211530;
+    --card-light: #39224f;
+    --purple-main: #7751c9;
+    --purple-light: #9a73e8;
+    --purple-dark: #5c319f;
+    --text-muted: #afa4c1;
+
+    --tarot-text: #f1ebfa;
+    --tarot-gold: #d0b477;
+    --tarot-gold-light: #ead7a2;
+    --tarot-gold-bright: #f0ddaa;
+    --tarot-purple-300: #a47bea;
+    --tarot-purple-400: #985ed6;
+    --tarot-purple-500: #7748c8;
+    --tarot-purple-600: #6940b1;
+    --tarot-surface: #1b112b;
+  }
+
+  html {
+    background: var(--bg-dark);
+  }
+
   body {
     @apply bg-background text-foreground;
   }

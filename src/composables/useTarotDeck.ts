@@ -39,27 +39,10 @@ function toCard(record: TarotRecord): TarotCard {
   };
 }
 
-/** 轉換後的塔羅牌資料 */
-const cards = (tarotData as TarotRecord[]).map(toCard);
-
-/** 取得牌背 */
-function requireBackCard(records: TarotCard[]): TarotCard {
-  const card = records.find((item) => item.cardUrl === "tarotBack.jpg");
-
-  if (!card) {
-    throw new Error("tarot.json 缺少牌背");
-  }
-
-  return card;
-}
-
-/** 牌背 */
-const backCard = requireBackCard(cards);
-
-/** 可抽出的牌：排除牌背與沒有牌名的資料 */
-const deck = cards.filter(
-  (card) => card.cardUrl !== "tarotBack.jpg" && card.cardName.length > 0,
-);
+/** 可抽出的牌面，只保留有牌名的資料 */
+const deck = (tarotData as TarotRecord[])
+  .map(toCard)
+  .filter((card) => card.cardName.length > 0);
 
 /** 洗牌 */
 function shuffle<T>(items: T[]): T[] {
@@ -94,7 +77,6 @@ export function useTarotDeck() {
   }
 
   return {
-    backCard,
     deckSize: deck.length,
     draw,
   };

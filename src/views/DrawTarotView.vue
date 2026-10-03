@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
-import { PhCircle, PhStarOfDavid } from "@phosphor-icons/vue";
-import { CircleAlert } from "@lucide/vue";
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 
-import DrawButton from "@/components/DrawButton.vue";
-import TarotCard from "@/components/TarotCard.vue";
-
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import DrawControls from "@/components/tarot/draw/DrawControls.vue";
+import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
+import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
+import TarotBoardPattern from "@/components/tarot/decor/TarotBoardPattern.vue";
+import TarotCard from "@/components/tarot/card/TarotCard.vue";
 
 import {
   useTarotDeck,
@@ -16,563 +13,710 @@ import {
 } from "@/composables/useTarotDeck";
 
 /** 最少允許抽取的牌數 */
-const MIN_COUNT = 1;
+const MIN_DRAW_COUNT = 1;
+
+/** 最多允許抽取的牌數，一副塔羅共 78 張 */
+const MAX_DRAW_COUNT = 78;
 
 /** 預設抽取與初始顯示的牌數 */
 const DEFAULT_COUNT = 5;
 
-/** 抽牌張數可能出現的驗證錯誤 */
-type CountError = "invalid" | "tooFew" | "tooMany";
+/** 中央牌堆出現並微微放大的時間，尾段即停留 */
+const GATHER_MS = 400;
 
-/** 取得塔羅牌組資料與抽牌功能 */
-const { backCard, deckSize, draw } = useTarotDeck();
+/** 從牌堆飛到定位的時間 */
+const FLY_MS = 700;
 
-/** 使用者目前輸入的抽牌張數 */
-const countInput = ref(String(DEFAULT_COUNT));
+/** 每張牌出發的間隔 */
+const STAGGER_MS = 62;
 
-/** 目前的張數輸入錯誤，沒有錯誤時為 null */
-const countError = ref<CountError | null>(null);
+type DealPhase = "idle" | "pending" | "gathering" | "flying";
 
-/**
- * 每次實際抽牌時遞增。
- * 用於改變 TarotCard 的 key，
- * 讓卡片重新建立並重新播放抽牌／翻牌動畫。
- */
-const drawId = ref(0);
+type SpreadLayout = {
+  cols: number;
+  cardSize: string;
+  columnGap: string;
+};
 
-/** 畫面目前顯示的塔羅牌 */
-const cards = ref<TarotCardData[]>(createBackCards(DEFAULT_COUNT));
+const { deckSize, draw } = useTarotDeck();
 
-/**
- * 根據目前錯誤類型產生提示視窗內容。
- * 沒有錯誤時回傳 null，不顯示 Alert。
- */
-const alertCopy = computed(() => {
-  if (!countError.value) {
-    return null;
-  }
-
-  const messages: Record<
-    CountError,
-    {
-      title: string;
-      description: string;
-    }
-  > = {
-    invalid: {
-      title: "無法解讀",
-      description: "請輸入整數張數。",
-    },
-
-    tooFew: {
-      title: "數量太少",
-      description: `至少抽出 ${MIN_COUNT} 張牌。`,
-    },
-
-    tooMany: {
-      title: "數量超過",
-      description: `牌組共 ${deckSize} 張，請輸入 ${MIN_COUNT} 到 ${deckSize}。`,
-    },
-  };
-
-  return messages[countError.value];
-});
-
-/**
- * 建立指定數量的牌背。
- * 用於頁面初始化與重新同步牌陣。
- */
-function createBackCards(count: number): TarotCardData[] {
-  return Array.from({ length: count }, () => backCard);
+function createSpread(count: number): (TarotCardData | null)[] {
+  return Array.from({ length: count }, () => null);
 }
 
-/**
- * 將使用者輸入轉換成有效的抽牌張數。
- *
- * 驗證規則：
- * 1. 不可為空白
- * 2. 必須為整數
- * 3. 不可小於最少抽牌張數
- * 4. 不可超過牌組總張數
- */
-function parseCount(
-  raw: string,
-): { ok: true; value: number } | { ok: false; error: CountError } {
-  const trimmed = raw.trim();
+const drawCount = ref(DEFAULT_COUNT);
+const drawId = ref(0);
+const isRitual = ref(false);
+const dealPhase = ref<DealPhase>("idle");
+const faceDown = ref(false);
+const useDealDelay = ref(false);
+const cards = ref<(TarotCardData | null)[]>(createSpread(DEFAULT_COUNT));
+const listRef = ref<HTMLElement | null>(null);
+const containerWidth = ref(estimateContainerWidth());
+const spreadLayout = ref<SpreadLayout>(
+  computeSpread(DEFAULT_COUNT, containerWidth.value, viewportWidth()),
+);
+const offsets = ref<{ x: number; y: number }[]>([]);
+const settled = ref<boolean[]>([]);
 
-  // 空白輸入視為張數不足
-  if (!trimmed) {
-    return {
-      ok: false,
-      error: "tooFew",
-    };
+let timers: number[] = [];
+let resizeObserver: ResizeObserver | undefined;
+let alive = true;
+
+const maxCount = computed(() => Math.min(MAX_DRAW_COUNT, deckSize));
+const isDealing = computed(() => dealPhase.value !== "idle");
+
+const gridStyle = computed(() => ({
+  "--spread-cols": String(spreadLayout.value.cols),
+  "--card-size": spreadLayout.value.cardSize,
+  "--spread-gap": spreadLayout.value.columnGap,
+}));
+
+function viewportWidth() {
+  return typeof window === "undefined" ? 1280 : window.innerWidth;
+}
+
+/** 首屏還沒量到牌陣寬度時，用視窗扣掉頁面與外框內距估算 */
+function estimateContainerWidth() {
+  if (typeof window === "undefined") {
+    return 1040;
   }
 
-  const value = Number(trimmed);
+  const viewport = window.innerWidth;
+  const pagePad = viewport < 760 ? 48 : 69;
+  const boardPad = viewport < 980 ? 32 : 40;
 
-  // 排除文字、小數、NaN 等非整數內容
-  if (!Number.isInteger(value)) {
-    return {
-      ok: false,
-      error: "invalid",
-    };
+  return Math.max(180, Math.min(1216, viewport - pagePad) - boardPad);
+}
+
+function cardBand(count: number) {
+  if (count <= 5) {
+    return { ideal: 158, min: 140, max: 165 };
   }
 
-  if (value < MIN_COUNT) {
-    return {
-      ok: false,
-      error: "tooFew",
-    };
+  if (count <= 8) {
+    return { ideal: 136, min: 120, max: 145 };
   }
 
-  if (value > deckSize) {
-    return {
-      ok: false,
-      error: "tooMany",
-    };
+  if (count <= 12) {
+    return { ideal: 122, min: 108, max: 130 };
+  }
+
+  return { ideal: 110, min: 100, max: 120 };
+}
+
+/** 先決定希望的列數；真的塞不下時再減少欄數 */
+function preferredColumns(count: number, viewport: number) {
+  if (count <= 1) {
+    return 1;
+  }
+
+  if (viewport < 720) {
+    return count <= 2 ? count : 3;
+  }
+
+  if (viewport < 1100) {
+    if (count <= 3) {
+      return count;
+    }
+
+    return Math.min(4, count);
+  }
+
+  if (count <= 8) {
+    return count;
+  }
+
+  return 6;
+}
+
+function computeSpread(count: number, rawWidth: number, viewport: number): SpreadLayout {
+  const safeCount = Math.max(1, count);
+  const gap = viewport < 720 ? 12 : 16;
+  const available = Math.max(160, Math.floor(rawWidth) - 2);
+  const band = cardBand(safeCount);
+
+  let max = band.max;
+  let min = band.min;
+  let ideal = band.ideal;
+
+  if (viewport < 720) {
+    max = safeCount === 1 ? 158 : 132;
+    min = 96;
+    ideal = Math.min(ideal, max);
+  } else if (viewport < 1100) {
+    max = Math.min(max, safeCount <= 3 ? 156 : 136);
+    min = Math.min(min, 104);
+    ideal = Math.min(ideal, max);
+  }
+
+  let cols = Math.min(preferredColumns(safeCount, viewport), safeCount);
+
+  const used = (columns: number, size: number) =>
+    columns * size + Math.max(0, columns - 1) * gap;
+
+  if (used(cols, ideal) > available) {
+    const shrunk = Math.floor((available - Math.max(0, cols - 1) * gap) / cols);
+
+    if (shrunk >= min) {
+      ideal = shrunk;
+    } else {
+      cols = Math.max(1, Math.min(safeCount, Math.floor((available + gap) / (min + gap))));
+      ideal = Math.floor((available - Math.max(0, cols - 1) * gap) / cols);
+      ideal = Math.min(max, Math.max(88, ideal));
+    }
+  }
+
+  ideal = Math.min(max, Math.max(88, ideal));
+
+  if (used(cols, ideal) > available && cols > 1) {
+    cols -= 1;
+    ideal = Math.min(
+      max,
+      Math.max(88, Math.floor((available - Math.max(0, cols - 1) * gap) / cols)),
+    );
   }
 
   return {
-    ok: true,
-    value,
+    cols,
+    cardSize: `${ideal}px`,
+    columnGap: `${gap}px`,
   };
 }
 
-/**
- * 驗證目前輸入的抽牌張數。
- *
- * 驗證失敗：
- * - 設定錯誤狀態
- * - 回傳 null
- *
- * 驗證成功：
- * - 清除錯誤狀態
- * - 統一輸入格式
- * - 回傳有效張數
- */
-function validateCount(): number | null {
-  const result = parseCount(countInput.value);
+function listWidth() {
+  const measured = listRef.value?.clientWidth ?? 0;
 
-  if (!result.ok) {
-    countError.value = result.error;
-    return null;
+  if (measured > 0) {
+    return measured;
   }
 
-  countError.value = null;
-  countInput.value = String(result.value);
-
-  return result.value;
+  return containerWidth.value;
 }
 
-/**
- * 將目前牌陣重設成指定數量的牌背。
- */
+function applyLayout(count = cards.value.length) {
+  const width = listWidth();
+
+  if (width > 0) {
+    containerWidth.value = width;
+  }
+
+  spreadLayout.value = computeSpread(count, containerWidth.value, viewportWidth());
+}
+
+function cardMotionStyle(index: number) {
+  const offset = offsets.value[index];
+  const jitterX = ((index % 5) - 2) * 1.5;
+  const jitterY = ((index % 3) - 1) * 1.6;
+  const spin = ((index % 5) - 2) * 0.85;
+  const fromX = offset ? offset.x + jitterX : 0;
+  const fromY = offset ? offset.y + jitterY : 0;
+
+  return {
+    "--from-x": `${fromX}px`,
+    "--from-y": `${fromY}px`,
+    "--spin": `${spin}deg`,
+    "--stagger": `${index * STAGGER_MS}ms`,
+    "--z": String(Math.max(cards.value.length - index, 1)),
+  };
+}
+
+function revealDelayFor(index: number) {
+  if (!useDealDelay.value) {
+    return Math.min(index * 0.08, 1.2);
+  }
+
+  return (index * STAGGER_MS + FLY_MS + 60) / 1000;
+}
+
+function later(fn: () => void, ms: number) {
+  const id = window.setTimeout(fn, ms);
+  timers.push(id);
+}
+
+function clearTimers() {
+  timers.forEach((id) => window.clearTimeout(id));
+  timers = [];
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
 function syncSpread(count: number) {
-  cards.value = createBackCards(count);
+  cards.value = createSpread(count);
 }
 
-/**
- * 抽牌張數輸入框失去焦點時執行。
- *
- * 若下一個焦點是按鈕，
- * 代表使用者可能正在直接按「抽牌」，
- * 此時交由 drawCards 處理，避免重複更新畫面。
- */
-function onCountBlur(event: FocusEvent) {
-  const nextElement = event.relatedTarget;
-
-  if (nextElement instanceof Element && nextElement.closest("button")) {
+watch(drawCount, (count) => {
+  if (isRitual.value) {
     return;
   }
 
-  const count = validateCount();
-
-  if (count === null) {
-    return;
-  }
-
-  // 張數真的有改變時才重新產生牌背
   if (cards.value.length !== count) {
     syncSpread(count);
+    applyLayout(count);
   }
+});
+
+function finishRitual() {
+  dealPhase.value = "idle";
+  isRitual.value = false;
+  offsets.value = [];
+  settled.value = [];
+  applyLayout();
 }
 
-/**
- * 執行抽牌。
- *
- * 先驗證張數，
- * 驗證成功後再從牌組抽出指定數量的牌。
- */
-function drawCards() {
-  const count = validateCount();
+function measureOffsets(list: HTMLElement) {
+  const listRect = list.getBoundingClientRect();
+  const centerX = listRect.left + listRect.width / 2;
+  const centerY = listRect.top + listRect.height / 2;
+  const nodes = list.querySelectorAll<HTMLElement>(":scope > .tarot-card");
 
-  if (count === null) {
+  return Array.from(nodes).map((node) => {
+    const rect = node.getBoundingClientRect();
+
+    return {
+      x: centerX - (rect.left + rect.width / 2),
+      y: centerY - (rect.top + rect.height / 2),
+    };
+  });
+}
+
+/** 牌陣比視窗高時，把幾何中心捲進畫面，牌堆才看得到 */
+function bringSpreadIntoView(list: HTMLElement) {
+  const rect = list.getBoundingClientRect();
+  const view = window.innerHeight;
+  const fullyVisible = rect.height <= view * 0.92 && rect.top >= 8 && rect.bottom <= view - 8;
+
+  if (fullyVisible) {
     return;
   }
 
-  // 更新 key，讓 TarotCard 元件重新建立並播放動畫
-  drawId.value++;
-
-  cards.value = draw(count);
+  const top = window.scrollY + rect.top + rect.height / 2 - view / 2;
+  window.scrollTo(0, Math.max(0, top));
 }
 
-/** 關閉錯誤提示視窗 */
-function closeAlert() {
-  countError.value = null;
-}
-
-/**
- * 全域鍵盤事件。
- * 當錯誤提示開啟時，可以按 Escape 關閉。
- */
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === "Escape" && countError.value) {
-    closeAlert();
+function onCardAnimationEnd(event: AnimationEvent, index: number) {
+  if (event.target !== event.currentTarget) {
+    return;
   }
+
+  if (!event.animationName.includes("deal-fly")) {
+    return;
+  }
+
+  if (settled.value[index]) {
+    return;
+  }
+
+  const next = settled.value.slice();
+  next[index] = true;
+  settled.value = next;
 }
 
-/** 元件載入後註冊鍵盤事件 */
+async function startDeal(count: number, reducedMotion: boolean) {
+  const drawn = draw(count);
+
+  clearTimers();
+  offsets.value = [];
+  settled.value = [];
+  useDealDelay.value = !reducedMotion;
+  spreadLayout.value = computeSpread(count, listWidth(), viewportWidth());
+
+  if (reducedMotion) {
+    faceDown.value = false;
+    drawId.value += 1;
+    cards.value = drawn;
+    finishRitual();
+    return;
+  }
+
+  faceDown.value = true;
+  dealPhase.value = "pending";
+  drawId.value += 1;
+  cards.value = drawn;
+
+  await nextTick();
+  await nextFrame();
+
+  if (!alive) {
+    return;
+  }
+
+  const list = listRef.value;
+
+  if (list) {
+    bringSpreadIntoView(list);
+    offsets.value = measureOffsets(list);
+  }
+
+  dealPhase.value = "gathering";
+
+  later(() => {
+    if (!alive) {
+      return;
+    }
+
+    faceDown.value = false;
+    dealPhase.value = "flying";
+
+    later(() => {
+      if (!alive) {
+        return;
+      }
+
+      finishRitual();
+    }, (count - 1) * STAGGER_MS + FLY_MS + 40);
+  }, GATHER_MS);
+}
+
+function beginRitual() {
+  if (isRitual.value) {
+    return;
+  }
+
+  const count = Math.min(maxCount.value, Math.max(MIN_DRAW_COUNT, drawCount.value));
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  isRitual.value = true;
+  clearTimers();
+  void startDeal(count, reducedMotion);
+}
+
 onMounted(() => {
-  window.addEventListener("keydown", handleKeydown);
+  const list = listRef.value;
+
+  if (list) {
+    resizeObserver = new ResizeObserver(() => {
+      const width = list.clientWidth;
+
+      if (width > 0) {
+        containerWidth.value = width;
+      }
+
+      if (dealPhase.value === "idle") {
+        applyLayout();
+      }
+    });
+    resizeObserver.observe(list);
+  }
+
+  applyLayout();
 });
 
-/** 元件卸載時移除事件，避免監聽器殘留 */
 onUnmounted(() => {
-  window.removeEventListener("keydown", handleKeydown);
+  alive = false;
+  clearTimers();
+  resizeObserver?.disconnect();
 });
 </script>
 
 <template>
-  <main class="oracle-page">
-    <!-- 塔羅牌陣區域 -->
-    <section class="spread-board" aria-label="塔羅牌陣">
-      <PhCircle
-        class="spread-ring spread-ring-outer"
-        weight="thin"
-        aria-hidden="true"
-      />
-      <PhCircle
-        class="spread-ring spread-ring-inner"
-        weight="thin"
-        aria-hidden="true"
-      />
-      <PhStarOfDavid class="spread-sigil" weight="thin" aria-hidden="true" />
+  <main class="tarot-page">
+    <OracleBackdrop>
+      <div class="tarot-layout">
+        <PageOrnament />
 
-      <div class="spread-grid">
-        <div
-          v-for="(card, index) in cards"
-          :key="`${drawId}-${index}`"
-          class="spread-cell"
+        <section
+          class="tarot-board"
+          :class="{ 'is-ritual': isRitual, 'is-dealing': isDealing }"
+          aria-label="塔羅牌陣"
         >
-          <TarotCard :card="card" />
-        </div>
-      </div>
-    </section>
+          <div class="tarot-board-glow" aria-hidden="true" />
+          <div class="tarot-board-glow tarot-board-glow-ritual" aria-hidden="true" />
+          <TarotBoardPattern />
 
-    <!-- 抽牌控制區 -->
-    <form class="oracle-controls" @submit.prevent="drawCards">
-      <!-- 抽牌張數輸入 -->
-      <label class="count-field" for="card-count">
-        <span class="count-label"> 抽牌數量 </span>
+          <div
+            ref="listRef"
+            class="tarot-card-list"
+            :style="gridStyle"
+            :data-cols="spreadLayout.cols"
+            :data-card-size="spreadLayout.cardSize"
+            :data-deal="dealPhase"
+          >
+            <div
+              v-for="(card, index) in cards"
+              :key="`${drawId}-${index}`"
+              class="tarot-card"
+              :class="{
+                'is-pending': dealPhase === 'pending',
+                'is-gathering': dealPhase === 'gathering',
+                'is-flying': dealPhase === 'flying' && !settled[index],
+                'is-settled': dealPhase === 'flying' && settled[index],
+              }"
+              :style="cardMotionStyle(index)"
+              @animationend="onCardAnimationEnd($event, index)"
+            >
+              <TarotCard
+                :card="card"
+                :face-down="faceDown"
+                :reveal-delay="revealDelayFor(index)"
+              />
+            </div>
+          </div>
+        </section>
 
-        <Input
-          id="card-count"
-          v-model="countInput"
-          inputmode="numeric"
-          autocomplete="off"
-          :placeholder="`${MIN_COUNT}–${deckSize}`"
-          :aria-invalid="countError ? true : undefined"
-          @blur="onCountBlur"
+        <DrawControls
+          v-model="drawCount"
+          :min="MIN_DRAW_COUNT"
+          :max="maxCount"
+          @draw="beginRitual"
         />
-      </label>
 
-      <!-- 抽牌按鈕 -->
-      <DrawButton @draw="drawCards" />
-    </form>
-
-    <!-- 張數輸入錯誤提示 -->
-    <div
-      v-if="alertCopy"
-      class="alert-overlay"
-      role="presentation"
-      @click.self="closeAlert"
-    >
-      <Alert variant="destructive" aria-labelledby="count-alert-title">
-        <CircleAlert />
-
-        <AlertTitle id="count-alert-title">
-          {{ alertCopy.title }}
-        </AlertTitle>
-
-        <AlertDescription>
-          {{ alertCopy.description }}
-        </AlertDescription>
-
-        <Button
-          type="button"
-          class="alert-close col-span-2 mt-3 justify-self-center"
-          @click="closeAlert"
-        >
-          知道了
-        </Button>
-      </Alert>
-    </div>
+        <PageOrnament />
+      </div>
+    </OracleBackdrop>
   </main>
 </template>
 
 <style scoped>
-.oracle-page {
-  display: flex;
-  min-height: 100svh;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2.5rem;
-  padding: 2.5rem 1.25rem 3rem;
-  color: #fffaf7;
-  background:
-    radial-gradient(1px 1px at 12% 18%, rgb(255 255 255 / 0.7), transparent),
-    radial-gradient(
-      1.2px 1.2px at 78% 12%,
-      rgb(255 236 190 / 0.8),
-      transparent
-    ),
-    radial-gradient(1px 1px at 64% 72%, rgb(255 255 255 / 0.45), transparent),
-    radial-gradient(1px 1px at 28% 80%, rgb(214 186 255 / 0.7), transparent),
-    radial-gradient(
-      ellipse at 50% -10%,
-      rgb(146 92 214 / 0.45),
-      transparent 46%
-    ),
-    linear-gradient(180deg, #1a0d33 0%, #12091f 48%, #090612 100%);
-}
+.tarot-page {
+  --bg-dark: #0d0818;
+  --bg-purple: #181026;
+  --text-muted: #afa4c1;
 
-/* 塔羅牌陣地墊：絲絨布面、金線鑲邊、中央占卜圓 */
-.spread-board {
+  --tarot-text: #f1ebfa;
+  --tarot-gold: #d0b477;
+  --tarot-gold-light: #ead7a2;
+  --tarot-gold-bright: #f0ddaa;
+
+  --tarot-purple-300: #a47bea;
+  --tarot-purple-400: #985ed6;
+  --tarot-purple-500: #7748c8;
+  --tarot-purple-600: #6940b1;
+
+  --tarot-surface: #1b112b;
+
   position: relative;
   isolation: isolate;
-  width: min(100%, 76rem);
-  padding: 2.35rem 1.85rem 2.6rem;
-  border-radius: 0.85rem;
-  background-color: #3a1834;
-  background-image:
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100svh;
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: clip;
+  color: var(--tarot-text);
+  background:
     radial-gradient(
-      ellipse 78% 62% at 50% 46%,
-      rgb(122 42 72 / 0.42),
-      transparent 70%
-    ),
-    radial-gradient(
-      90% 55% at 22% 0%,
-      rgb(255 228 196 / 0.1),
+      ellipse at 50% -8%,
+      rgb(119 81 201 / 0.22),
       transparent 46%
     ),
-    repeating-linear-gradient(
-      118deg,
-      rgb(255 244 220 / 0.035) 0 1px,
-      transparent 1px 3px
-    ),
-    linear-gradient(168deg, #6a3048 0%, #4a2044 36%, #2c142e 100%);
-  box-shadow:
-    inset 0 0 0 1px rgb(244 214 150 / 0.72),
-    inset 0 0 0 0.7rem #1b0c20,
-    inset 0 0 0 calc(0.7rem + 1px) rgb(244 214 150 / 0.42),
-    inset 0 18px 28px rgb(255 220 180 / 0.05),
-    0 2px 0 rgb(90 36 58 / 0.8),
-    0 22px 46px rgb(4 1 12 / 0.48);
+    linear-gradient(180deg, var(--bg-purple) 0%, var(--bg-dark) 100%);
 }
 
-.spread-ring {
+.tarot-page::after {
+  content: "";
   position: absolute;
-  z-index: 0;
-  top: 46%;
-  left: 50%;
-  translate: -50% -50%;
-  color: rgb(244 214 150 / 0.32);
+  inset: 0;
+  z-index: 4;
   pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
 }
 
-.spread-ring-outer {
-  width: min(18rem, 46%);
-  height: min(18rem, 46%);
-}
-
-.spread-ring-inner {
-  width: min(12.5rem, 32%);
-  height: min(12.5rem, 32%);
-  color: rgb(244 214 150 / 0.22);
-}
-
-.spread-sigil {
-  position: absolute;
-  z-index: 0;
-  top: 46%;
-  left: 50%;
-  width: min(8.75rem, 24%);
-  height: min(8.75rem, 24%);
-  translate: -50% -50%;
-  color: rgb(244 214 150 / 0.55);
-  pointer-events: none;
-}
-
-/* 卡牌排列區：每列以置中為主，最後一列不足時也置中 */
-.spread-grid {
+.tarot-layout {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem 1.15rem;
-}
-
-/* 單張卡牌容器 */
-.spread-cell {
-  display: flex;
-  width: 11.5rem;
-  justify-content: center;
-}
-
-/* 抽牌控制區 */
-.oracle-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 1rem 1.25rem;
-}
-
-/* 張數輸入區 */
-.count-field {
-  display: flex;
-  width: min(100%, 11rem);
+  width: min(100%, 76rem);
+  max-width: 100%;
+  min-width: 0;
   flex-direction: column;
-  gap: 0.45rem;
+  align-items: center;
+  margin-block: auto;
+  gap: 0.85rem;
 }
 
-.count-label {
-  padding-left: 0.35rem;
-  color: #f3e7ff;
-  font-size: max(12px, 1rem);
-  letter-spacing: 0.22em;
-}
-
-/* shadcn Input 樣式 */
-.count-field :deep([data-slot="input"]) {
-  width: 11rem;
-  height: 2.75rem;
-  border-radius: 9999px;
-  border-color: rgb(255 255 255 / 0.28);
-  background: rgb(42 22 72 / 0.8);
-  padding-inline: 1rem;
-  color: #fffaf7;
-  font-size: max(12px, 1rem);
-  text-align: center;
-  letter-spacing: 0.2em;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.2),
-    0 8px 24px rgb(48 18 92 / 0.28);
-}
-
-.count-field :deep([data-slot="input"])::placeholder {
-  color: rgb(216 196 240 / 0.65);
-}
-
-.count-field :deep([data-slot="input"]:focus-visible) {
-  border-color: #f0d9ff;
-  outline: none;
-  box-shadow:
-    0 0 0 3px rgb(201 160 255 / 0.45),
-    inset 0 1px 0 rgb(255 255 255 / 0.2);
-}
-
-/* 張數輸入錯誤狀態 */
-.count-field :deep([data-slot="input"][aria-invalid="true"]) {
-  border-color: #ffc1d0;
-  box-shadow: 0 0 0 3px rgb(255 142 174 / 0.35);
-}
-
-/* 錯誤提示背景遮罩 */
-.alert-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background: rgb(8 4 18 / 0.62);
-  backdrop-filter: blur(8px);
-}
-
-/* Alert 主體 */
-.alert-overlay :deep([data-slot="alert"]) {
-  width: min(100%, 26rem);
-  border-color: rgb(255 208 220 / 0.4);
-  border-radius: 1.5rem;
-  color: #fff7f8;
-  font-size: max(12px, 1rem);
+.tarot-board {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-bottom: 1.15rem;
+  overflow: visible;
+  padding: 2.15rem 1.2rem 1.7rem;
+  border: 1px solid color-mix(in srgb, var(--tarot-gold) 50%, transparent);
+  border-radius: 18px;
   background:
     radial-gradient(
-      120% 90% at 100% 0%,
-      rgb(255 186 206 / 0.2),
-      transparent 46%
+      ellipse at 50% -20%,
+      rgb(141 83 170 / 0.26),
+      transparent 55%
     ),
-    linear-gradient(160deg, #7a3d78 0%, #54245e 48%, #311446 100%);
+    radial-gradient(
+      ellipse at 50% 120%,
+      rgb(75 42 110 / 0.18),
+      transparent 50%
+    ),
+    linear-gradient(180deg, rgb(42 20 42 / 0.96), rgb(17 9 24 / 0.98));
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.22),
-    0 24px 60px rgb(18 6 40 / 0.45);
-  animation: alert-bounce 0.55s cubic-bezier(0.2, 0.85, 0.25, 1);
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    inset 0 0 80px rgb(48 22 72 / 0.18),
+    0 24px 60px rgb(0 0 0 / 0.35);
 }
 
-.alert-overlay :deep([data-slot="alert"] svg) {
-  color: #ffd0dc;
+.tarot-board::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  z-index: 1;
+  border: 1px solid color-mix(in srgb, var(--tarot-gold) 14%, transparent);
+  border-radius: 12px;
+  pointer-events: none;
 }
 
-.alert-overlay :deep([data-slot="alert-title"]) {
-  color: #fff7f8;
-  font-size: max(12px, 1.125rem);
+.tarot-board-glow {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  z-index: 0;
+  width: 75%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse,
+    rgb(153 100 226 / 0.18),
+    rgb(96 48 145 / 0.05) 45%,
+    transparent 72%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
-.alert-overlay :deep([data-slot="alert-description"]) {
-  color: #ffe4ea;
-  font-size: max(12px, 1rem);
+.tarot-board-glow-ritual {
+  background: radial-gradient(
+    ellipse,
+    rgb(186 140 245 / 0.46),
+    rgb(120 70 180 / 0.14) 42%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
 }
 
-/* Alert 出現動畫 */
-@keyframes alert-bounce {
+.tarot-board.is-ritual .tarot-board-glow-ritual {
+  opacity: 1;
+}
+
+.tarot-card-list {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(var(--spread-cols, 1), minmax(0, var(--card-size, 158px)));
+  justify-content: center;
+  align-items: start;
+  align-content: start;
+  column-gap: var(--spread-gap, 16px);
+  row-gap: clamp(1.25rem, 1.6vw, 2rem);
+}
+
+.tarot-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-content: center;
+  transform-origin: center center;
+}
+
+.tarot-card.is-pending {
+  opacity: 0;
+}
+
+.tarot-card.is-gathering,
+.tarot-card.is-flying {
+  z-index: var(--z, 1);
+}
+
+.tarot-card.is-gathering {
+  animation: deal-gather 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tarot-card.is-flying {
+  animation: deal-fly 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+.tarot-card.is-settled {
+  z-index: 1;
+  opacity: 1;
+  animation: none;
+  transform: none;
+}
+
+.tarot-board.is-dealing .tarot-card {
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@keyframes deal-gather {
   0% {
     opacity: 0;
-    transform: translateY(1rem) scale(0.86);
+    transform: translate3d(var(--from-x), var(--from-y), 0) scale(0.86) rotate(var(--spin));
   }
 
-  58% {
+  48% {
     opacity: 1;
-    transform: translateY(-0.4rem) scale(1.045);
+    transform: translate3d(var(--from-x), var(--from-y), 0) scale(0.96)
+      rotate(calc(var(--spin) * 0.35));
   }
 
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(var(--from-x), var(--from-y), 0) scale(1) rotate(0deg);
   }
 }
 
-/* 使用者關閉動畫時停用 Alert 動畫 */
+@keyframes deal-fly {
+  0% {
+    opacity: 1;
+    transform: translate3d(var(--from-x), var(--from-y), 0) scale(1) rotate(0deg);
+  }
+
+  16% {
+    opacity: 0.8;
+    transform: translate3d(calc(var(--from-x) * 0.78), calc(var(--from-y) * 0.78), 0) scale(0.96)
+      rotate(var(--spin));
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .tarot-board {
+    padding-inline: 1rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .tarot-layout {
+    margin-block: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .alert-overlay :deep([data-slot="alert"]) {
+  .tarot-card.is-pending,
+  .tarot-card.is-gathering,
+  .tarot-card.is-flying,
+  .tarot-board-glow-ritual {
     animation: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
-}
-
-/* Alert 關閉按鈕 */
-.alert-close {
-  height: 2.25rem;
-  border: 1px solid rgb(255 255 255 / 0.28);
-  border-radius: 9999px;
-  background: linear-gradient(135deg, #8055c2 0%, #4d2888 100%);
-  color: #fffaf7;
-  font-size: max(12px, 1rem);
-  letter-spacing: 0.16em;
-}
-
-.alert-close:hover {
-  filter: brightness(1.08);
 }
 </style>
