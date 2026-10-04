@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import {
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogRoot,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "reka-ui";
 import { toast } from "vue-sonner";
 
 import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
@@ -25,7 +36,7 @@ async function copyRecord(record: DrawHistoryRecord) {
   }
 }
 
-function clearRecords() {
+function confirmClear() {
   if (records.value.length === 0) {
     return;
   }
@@ -49,14 +60,36 @@ function clearRecords() {
         <section class="history-board" aria-label="抽牌歷史">
           <HistoryRecordTable :records="records" @copy="copyRecord" />
           <div class="history-actions">
-            <button
-              type="button"
-              class="history-clear"
-              :disabled="records.length === 0"
-              @click="clearRecords"
-            >
-              清除紀錄
-            </button>
+            <AlertDialogRoot>
+              <AlertDialogTrigger
+                class="history-clear"
+                :disabled="records.length === 0"
+              >
+                清除紀錄
+              </AlertDialogTrigger>
+              <AlertDialogPortal>
+                <AlertDialogOverlay class="history-confirm-overlay" />
+                <AlertDialogContent class="history-confirm">
+                  <AlertDialogTitle class="history-confirm-title">
+                    清除紀錄
+                  </AlertDialogTitle>
+                  <AlertDialogDescription class="history-confirm-note">
+                    刪除後無法復原，這台裝置上的抽牌紀錄都會消失。
+                  </AlertDialogDescription>
+                  <div class="history-confirm-actions">
+                    <AlertDialogCancel class="history-confirm-cancel">
+                      取消
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      class="history-confirm-ok"
+                      @click="confirmClear"
+                    >
+                      確認清除
+                    </AlertDialogAction>
+                  </div>
+                </AlertDialogContent>
+              </AlertDialogPortal>
+            </AlertDialogRoot>
           </div>
         </section>
       </div>
@@ -184,5 +217,104 @@ function clearRecords() {
 .history-clear:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.history-confirm-overlay {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  background: rgb(6 2 12 / 0.72);
+}
+
+.history-confirm {
+  position: fixed;
+  z-index: 51;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: min(22rem, calc(100vw - 2rem));
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.35rem 1.25rem 1.2rem;
+  border: 1px solid rgb(210 174 102 / 0.4);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(132 84 180 / 0.16), transparent 52%),
+    rgb(16 8 27 / 0.96);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 0.04),
+    0 30px 80px rgb(0 0 0 / 0.45);
+  transform: translate(-50%, -50%);
+}
+
+.history-confirm:focus {
+  outline: none;
+}
+
+.history-confirm-title {
+  margin: 0;
+  color: var(--tarot-gold-light);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-indent: 0.18em;
+}
+
+.history-confirm-note {
+  margin: 0;
+  color: var(--text-muted, #afa4c1);
+  font-size: calc(0.92rem + 2px);
+  letter-spacing: 0.04em;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.history-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.history-confirm-cancel,
+.history-confirm-ok {
+  height: 2.5rem;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.history-confirm-cancel {
+  border: 1px solid rgb(210 174 102 / 0.32);
+  color: var(--tarot-gold-light);
+  background: transparent;
+}
+
+.history-confirm-cancel:hover,
+.history-confirm-cancel:focus-visible,
+.history-confirm-ok:hover,
+.history-confirm-ok:focus-visible {
+  outline: none;
+}
+
+.history-confirm-cancel:hover,
+.history-confirm-cancel:focus-visible {
+  border-color: rgb(231 195 118 / 0.72);
+  color: var(--tarot-gold-bright);
+}
+
+.history-confirm-ok {
+  border: 1px solid rgb(231 195 118 / 0.72);
+  color: rgb(28 16 8);
+  background: linear-gradient(180deg, var(--tarot-gold-bright), var(--tarot-gold));
+}
+
+.history-confirm-ok:hover,
+.history-confirm-ok:focus-visible {
+  filter: brightness(1.06);
 }
 </style>

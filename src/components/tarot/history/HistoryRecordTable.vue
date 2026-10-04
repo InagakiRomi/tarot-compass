@@ -61,18 +61,31 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
           還沒有抽牌紀錄
         </TableEmpty>
         <TableRow v-for="record in records" :key="record.id">
-          <TableCell class="history-col-time">{{ formatDrawnAt(record.drawnAt) }}</TableCell>
+          <TableCell class="history-col-time">{{
+            formatDrawnAt(record.drawnAt)
+          }}</TableCell>
           <TableCell class="history-col-names">
             <ul class="history-names">
-              <li v-for="(card, index) in record.cards" :key="`${record.id}-${card.cardId}-${index}`">
+              <li
+                v-for="(card, index) in record.cards"
+                :key="`${record.id}-${card.cardId}-${index}`"
+              >
                 {{ cardLabel(card) }}
               </li>
             </ul>
           </TableCell>
           <TableCell class="history-col-count">{{ record.count }}</TableCell>
           <TableCell class="history-col-action">
-            <button type="button" class="history-copy" @click="emit('copy', record)">
-              <Copy class="history-copy-icon" :stroke-width="1.6" aria-hidden="true" />
+            <button
+              type="button"
+              class="history-copy"
+              @click="emit('copy', record)"
+            >
+              <Copy
+                class="history-copy-icon"
+                :stroke-width="1.6"
+                aria-hidden="true"
+              />
               複製
             </button>
           </TableCell>
@@ -89,6 +102,7 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
 
 .history-table :deep([data-slot="table"]) {
   min-width: 36rem;
+  border-collapse: collapse;
   color: var(--tarot-text);
   font-size: var(--font-size-body);
 }
@@ -105,6 +119,11 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
   background: rgb(210 174 102 / 0.08);
 }
 
+.history-table :deep([data-slot="table-head"]),
+.history-table :deep([data-slot="table-cell"]) {
+  border: 1px solid rgb(210 174 102 / 0.28);
+}
+
 .history-table :deep([data-slot="table-head"]) {
   height: 2.75rem;
   padding: 0.7rem 0.95rem;
@@ -112,6 +131,7 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
   font-size: var(--font-size-label);
   font-weight: 500;
   letter-spacing: 0.14em;
+  text-align: center;
 }
 
 .history-table :deep([data-slot="table-cell"]) {
@@ -133,6 +153,9 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
 
 .history-col-action {
   width: 6.5rem;
+}
+
+.history-table :deep([data-slot="table-cell"].history-col-action) {
   text-align: right;
 }
 
@@ -152,6 +175,8 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
 
 .history-copy {
   display: inline-flex;
+  flex-shrink: 0;
+  white-space: nowrap;
   align-items: center;
   height: 2rem;
   padding: 0 0.85rem;

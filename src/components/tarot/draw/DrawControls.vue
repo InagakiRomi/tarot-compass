@@ -171,7 +171,7 @@ function onDrawClick() {
         @click="emit('copy')"
       >
         <Copy class="copy-result-icon" :stroke-width="1.6" aria-hidden="true" />
-        複製牌面
+        複製結果
       </button>
     </div>
 
