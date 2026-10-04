@@ -6,6 +6,8 @@ export interface TarotCard {
   cardName: string;
   cardUrl: string;
   imageSrc: string;
+  /** 抽出後才有；true 為逆位 */
+  reversed?: boolean;
 }
 
 /** 塔羅牌資料原始資料 */

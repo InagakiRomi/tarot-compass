@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { Copy } from "@lucide/vue";
 import { toast } from "vue-sonner";
 import DeckTypeToggle, {
   type DeckType,
@@ -21,6 +22,7 @@ const deckType = defineModel<DeckType>("deckType", { required: true });
 const emit = defineEmits<{
   "update:modelValue": [value: number];
   draw: [];
+  copy: [];
 }>();
 
 const rawCount = ref(String(props.modelValue));
@@ -177,6 +179,11 @@ function onDrawClick() {
       <span class="skip-motion-label">跳過動畫</span>
       <SkipMotionSwitch v-model="skipMotion" :disabled="disabled" />
     </label>
+
+    <button type="button" class="copy-result" @click="emit('copy')">
+      <Copy class="copy-result-icon" :stroke-width="1.6" aria-hidden="true" />
+      複製結果
+    </button>
   </div>
 </template>
 
@@ -239,6 +246,39 @@ function onDrawClick() {
   color: #d5cbe4;
   font-size: 0.72rem;
   letter-spacing: 0.28em;
+}
+
+.copy-result {
+  display: inline-flex;
+  align-items: center;
+  height: 2.15rem;
+  margin-top: 0.15rem;
+  padding: 0 1.05rem;
+  border: 1px solid rgb(210 174 102 / 0.38);
+  border-radius: 999px;
+  color: #e7c376;
+  font-size: 0.82rem;
+  letter-spacing: 0.22em;
+  background: rgb(12 6 20 / 0.42);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.copy-result:hover,
+.copy-result:focus-visible {
+  border-color: rgb(231 195 118 / 0.8);
+  color: #f4e3b2;
+  background: rgb(28 16 42 / 0.72);
+  outline: none;
+}
+
+.copy-result-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-right: 0.4rem;
 }
 
 @media (max-width: 760px) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { toast } from "vue-sonner";
 
 import type { DeckType } from "@/components/tarot/draw/DeckTypeToggle.vue";
 import DrawControls from "@/components/tarot/draw/DrawControls.vue";
@@ -376,7 +377,7 @@ async function startDeal(count: number, reducedMotion: boolean) {
   if (reducedMotion) {
     faceDown.value = false;
     drawId.value += 1;
-    cards.value = drawn;
+    cards.value = withOrientation(drawn);
     finishRitual();
     return;
   }
@@ -384,7 +385,7 @@ async function startDeal(count: number, reducedMotion: boolean) {
   faceDown.value = true;
   dealPhase.value = "pending";
   drawId.value += 1;
-  cards.value = drawn;
+  cards.value = withOrientation(drawn);
 
   await nextTick();
   await nextFrame();
@@ -418,6 +419,35 @@ async function startDeal(count: number, reducedMotion: boolean) {
       finishRitual();
     }, (count - 1) * STAGGER_MS + FLY_MS + 40);
   }, GATHER_MS);
+}
+
+function withOrientation(drawn: TarotCardData[]) {
+  return drawn.map((card) => ({
+    ...card,
+    reversed: Math.random() < 0.5,
+  }));
+}
+
+function formatReading(drawn: TarotCardData[]) {
+  return drawn
+    .map((card) => `${card.cardName}${card.reversed ? "逆位" : "正位"}`)
+    .join("\n");
+}
+
+async function copyResult() {
+  const drawn = cards.value.filter((card): card is TarotCardData => card !== null);
+
+  if (drawn.length === 0) {
+    toast.warning("請先抽牌");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(formatReading(drawn));
+    toast.success("已複製抽牌結果");
+  } catch {
+    toast.error("複製失敗，請再試一次");
+  }
 }
 
 function beginRitual() {
@@ -522,6 +552,7 @@ onUnmounted(() => {
           :max="maxDrawCount"
           :disabled="isRitual"
           @draw="beginRitual"
+          @copy="copyResult"
         />
 
         <PageOrnament />

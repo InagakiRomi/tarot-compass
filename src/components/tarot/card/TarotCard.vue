@@ -113,6 +113,7 @@ function onPointerLeave() {
               :src="card.imageSrc"
               :alt="card.cardName"
               class="card-image"
+              :class="{ 'is-reversed': card.reversed }"
               draggable="false"
             />
           </div>
@@ -124,7 +125,10 @@ function onPointerLeave() {
       class="card-name"
       :class="{ invisible: showBack, 'is-revealed': !showBack && !revealInstant }"
     >
-      {{ card?.cardName }}
+      <template v-if="card">
+        {{ card.cardName }}
+        <span class="card-orientation">{{ card.reversed ? "逆位" : "正位" }}</span>
+      </template>
     </p>
   </div>
 </template>
@@ -238,6 +242,10 @@ function onPointerLeave() {
   object-fit: contain;
 }
 
+.card-image.is-reversed {
+  transform: rotate(180deg);
+}
+
 .card-name {
   min-height: 1.25rem;
   color: var(--tarot-text);
@@ -251,6 +259,13 @@ function onPointerLeave() {
 .card-name.is-revealed {
   animation: name-rise 0.45s ease both;
   animation-delay: var(--name-delay, 0.4s);
+}
+
+.card-orientation {
+  margin-left: 0.28rem;
+  color: var(--tarot-gold-light, #e7c376);
+  font-size: 0.78em;
+  letter-spacing: 0.08em;
 }
 
 @keyframes card-shine {
