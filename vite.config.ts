@@ -1,4 +1,4 @@
-import { copyFileSync } from "node:fs";
+import { copyFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 
@@ -15,13 +15,14 @@ function githubPagesSpaFallback() {
     apply: "build" as const,
     closeBundle() {
       copyFileSync(resolve(docsDir, "index.html"), resolve(docsDir, "404.html"));
+      writeFileSync(resolve(docsDir, ".nojekyll"), "");
     },
   };
 }
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "/tarot-compass-frontend/",
+  base: "/tarot-compass/",
   build: {
     outDir: "docs",
     emptyOutDir: true,
