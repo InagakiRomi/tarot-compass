@@ -45,6 +45,7 @@ function createSpread(count: number): (TarotCardData | null)[] {
 }
 
 const drawCount = ref(DEFAULT_COUNT);
+const skipMotion = ref(false);
 const drawId = ref(0);
 const isRitual = ref(false);
 const dealPhase = ref<DealPhase>("idle");
@@ -71,6 +72,20 @@ const gridStyle = computed(() => ({
   "--card-size": spreadLayout.value.cardSize,
   "--spread-gap": spreadLayout.value.columnGap,
 }));
+
+const cardRows = computed(() => {
+  const cols = Math.max(1, spreadLayout.value.cols);
+  const rows: { card: TarotCardData | null; index: number }[][] = [];
+
+  cards.value.forEach((card, index) => {
+    const rowIndex = Math.floor(index / cols);
+    const row = rows[rowIndex] ?? [];
+    row.push({ card, index });
+    rows[rowIndex] = row;
+  });
+
+  return rows;
+});
 
 function viewportWidth() {
   return typeof window === "undefined" ? 1280 : window.innerWidth;
@@ -111,6 +126,10 @@ function preferredColumns(count: number, viewport: number) {
     return 1;
   }
 
+  if (viewport < 520) {
+    return Math.min(2, count);
+  }
+
   if (viewport < 720) {
     return count <= 2 ? count : 3;
   }
@@ -132,7 +151,7 @@ function preferredColumns(count: number, viewport: number) {
 
 function computeSpread(count: number, rawWidth: number, viewport: number): SpreadLayout {
   const safeCount = Math.max(1, count);
-  const gap = viewport < 720 ? 12 : 16;
+  const gap = viewport < 720 ? 16 : 26;
   const available = Math.max(160, Math.floor(rawWidth) - 2);
   const band = cardBand(safeCount);
 
@@ -204,6 +223,25 @@ function applyLayout(count = cards.value.length) {
   spreadLayout.value = computeSpread(count, containerWidth.value, viewportWidth());
 }
 
+/** 每一排自己一條弧：左傾、正中、右傾，換排就從頭再來 */
+function rowArc(index: number) {
+  const count = cards.value.length;
+  const cols = Math.max(1, spreadLayout.value.cols);
+  const rowStart = Math.floor(index / cols) * cols;
+  const rowCount = Math.min(cols, Math.max(0, count - rowStart));
+  const place = index - rowStart;
+
+  if (rowCount <= 1) {
+    return { tilt: "0deg", drop: "0px" };
+  }
+
+  const along = (place / (rowCount - 1)) * 2 - 1;
+  const tilt = Math.round(along * 28) / 10;
+  const drop = Math.round(along * along * 14);
+
+  return { tilt: `${tilt}deg`, drop: `${drop}px` };
+}
+
 function cardMotionStyle(index: number) {
   const offset = offsets.value[index];
   const jitterX = ((index % 5) - 2) * 1.5;
@@ -211,6 +249,7 @@ function cardMotionStyle(index: number) {
   const spin = ((index % 5) - 2) * 0.85;
   const fromX = offset ? offset.x + jitterX : 0;
   const fromY = offset ? offset.y + jitterY : 0;
+  const arc = rowArc(index);
 
   return {
     "--from-x": `${fromX}px`,
@@ -218,6 +257,8 @@ function cardMotionStyle(index: number) {
     "--spin": `${spin}deg`,
     "--stagger": `${index * STAGGER_MS}ms`,
     "--z": String(Math.max(cards.value.length - index, 1)),
+    "--rest-tilt": arc.tilt,
+    "--rest-drop": arc.drop,
   };
 }
 
@@ -269,19 +310,14 @@ function finishRitual() {
 }
 
 function measureOffsets(list: HTMLElement) {
-  const listRect = list.getBoundingClientRect();
-  const centerX = listRect.left + listRect.width / 2;
-  const centerY = listRect.top + listRect.height / 2;
-  const nodes = list.querySelectorAll<HTMLElement>(":scope > .tarot-card");
+  const centerX = list.clientWidth / 2;
+  const centerY = list.clientHeight / 2;
+  const nodes = list.querySelectorAll<HTMLElement>(":scope > .tarot-card-row > .tarot-card");
 
-  return Array.from(nodes).map((node) => {
-    const rect = node.getBoundingClientRect();
-
-    return {
-      x: centerX - (rect.left + rect.width / 2),
-      y: centerY - (rect.top + rect.height / 2),
-    };
-  });
+  return Array.from(nodes).map((node) => ({
+    x: centerX - (node.offsetLeft + node.offsetWidth / 2),
+    y: centerY - (node.offsetTop + node.offsetHeight / 2),
+  }));
 }
 
 /** 牌陣比視窗高時，把幾何中心捲進畫面，牌堆才看得到 */
@@ -378,7 +414,8 @@ function beginRitual() {
   }
 
   const count = Math.min(maxCount.value, Math.max(MIN_DRAW_COUNT, drawCount.value));
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion =
+    skipMotion.value || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   isRitual.value = true;
   clearTimers();
@@ -437,31 +474,40 @@ onUnmounted(() => {
             :data-deal="dealPhase"
           >
             <div
-              v-for="(card, index) in cards"
-              :key="`${drawId}-${index}`"
-              class="tarot-card"
-              :class="{
-                'is-pending': dealPhase === 'pending',
-                'is-gathering': dealPhase === 'gathering',
-                'is-flying': dealPhase === 'flying' && !settled[index],
-                'is-settled': dealPhase === 'flying' && settled[index],
-              }"
-              :style="cardMotionStyle(index)"
-              @animationend="onCardAnimationEnd($event, index)"
+              v-for="(row, rowIndex) in cardRows"
+              :key="`${drawId}-row-${rowIndex}`"
+              class="tarot-card-row"
             >
-              <TarotCard
-                :card="card"
-                :face-down="faceDown"
-                :reveal-delay="revealDelayFor(index)"
-              />
+              <div
+                v-for="entry in row"
+                :key="`${drawId}-${entry.index}`"
+                class="tarot-card"
+                :class="{
+                  'is-pending': dealPhase === 'pending',
+                  'is-gathering': dealPhase === 'gathering',
+                  'is-flying': dealPhase === 'flying' && !settled[entry.index],
+                  'is-settled': dealPhase === 'flying' && settled[entry.index],
+                }"
+                :style="cardMotionStyle(entry.index)"
+                @animationend="onCardAnimationEnd($event, entry.index)"
+              >
+                <TarotCard
+                  :card="entry.card"
+                  :face-down="faceDown"
+                  :reveal-delay="revealDelayFor(entry.index)"
+                  :skip-motion="skipMotion"
+                />
+              </div>
             </div>
           </div>
         </section>
 
         <DrawControls
           v-model="drawCount"
+          v-model:skip-motion="skipMotion"
           :min="MIN_DRAW_COUNT"
           :max="maxCount"
+          :disabled="isRitual"
           @draw="beginRitual"
         />
 
@@ -478,9 +524,10 @@ onUnmounted(() => {
   --text-muted: #afa4c1;
 
   --tarot-text: #f1ebfa;
-  --tarot-gold: #d0b477;
-  --tarot-gold-light: #ead7a2;
-  --tarot-gold-bright: #f0ddaa;
+  --tarot-gold-dim: #8f7346;
+  --tarot-gold: #d2ae66;
+  --tarot-gold-light: #e7c376;
+  --tarot-gold-bright: #f4e3b2;
 
   --tarot-purple-300: #a47bea;
   --tarot-purple-400: #985ed6;
@@ -493,18 +540,15 @@ onUnmounted(() => {
   isolation: isolate;
   display: flex;
   width: 100%;
-  max-width: 100%;
+  max-width: 100vw;
+  min-width: 0;
   min-height: 100svh;
   flex-direction: column;
   align-items: stretch;
   overflow-x: clip;
   color: var(--tarot-text);
   background:
-    radial-gradient(
-      ellipse at 50% -8%,
-      rgb(119 81 201 / 0.22),
-      transparent 46%
-    ),
+    radial-gradient(ellipse at 50% 38%, rgb(90 48 140 / 0.07), transparent 46%),
     linear-gradient(180deg, var(--bg-purple) 0%, var(--bg-dark) 100%);
 }
 
@@ -523,13 +567,14 @@ onUnmounted(() => {
   position: relative;
   z-index: 1;
   display: flex;
-  width: min(100%, 76rem);
-  max-width: 100%;
+  width: 100%;
+  max-width: 76rem;
   min-width: 0;
+  margin-inline: auto;
   flex-direction: column;
   align-items: center;
   margin-block: auto;
-  gap: 0.85rem;
+  gap: 0.55rem;
 }
 
 .tarot-board {
@@ -538,53 +583,35 @@ onUnmounted(() => {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  margin-bottom: 1.15rem;
+  margin-inline: auto;
+  margin-bottom: 0.85rem;
   overflow: visible;
-  padding: 2.15rem 1.2rem 1.7rem;
-  border: 1px solid color-mix(in srgb, var(--tarot-gold) 50%, transparent);
-  border-radius: 18px;
+  padding: 1.35rem 1.45rem 0.7rem;
+  border: 1px solid rgb(210 174 102 / 0.32);
+  border-radius: 22px;
   background:
-    radial-gradient(
-      ellipse at 50% -20%,
-      rgb(141 83 170 / 0.26),
-      transparent 55%
-    ),
-    radial-gradient(
-      ellipse at 50% 120%,
-      rgb(75 42 110 / 0.18),
-      transparent 50%
-    ),
-    linear-gradient(180deg, rgb(42 20 42 / 0.96), rgb(17 9 24 / 0.98));
+    radial-gradient(circle at 50% 35%, rgb(132 84 180 / 0.14), transparent 55%),
+    rgb(16 8 27 / 0.48);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.05),
-    inset 0 0 80px rgb(48 22 72 / 0.18),
-    0 24px 60px rgb(0 0 0 / 0.35);
-}
-
-.tarot-board::before {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  z-index: 1;
-  border: 1px solid color-mix(in srgb, var(--tarot-gold) 14%, transparent);
-  border-radius: 12px;
-  pointer-events: none;
+    inset 0 1px rgb(255 255 255 / 0.04),
+    0 30px 80px rgb(0 0 0 / 0.28);
+  backdrop-filter: blur(10px);
 }
 
 .tarot-board-glow {
   position: absolute;
-  top: 45%;
+  top: 42%;
   left: 50%;
   z-index: 0;
-  width: 75%;
-  height: 80%;
+  width: min(900px, 140%);
+  height: 420px;
   background: radial-gradient(
     ellipse,
-    rgb(153 100 226 / 0.18),
-    rgb(96 48 145 / 0.05) 45%,
+    rgb(122 72 167 / 0.16),
+    rgb(83 47 122 / 0.06) 45%,
     transparent 72%
   );
-  filter: blur(40px);
+  filter: blur(30px);
   pointer-events: none;
   transform: translate(-50%, -50%);
 }
@@ -607,27 +634,38 @@ onUnmounted(() => {
 .tarot-card-list {
   position: relative;
   z-index: 2;
-  display: grid;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  grid-template-columns: repeat(var(--spread-cols, 1), minmax(0, var(--card-size, 158px)));
-  justify-content: center;
-  align-items: start;
-  align-content: start;
-  column-gap: var(--spread-gap, 16px);
-  row-gap: clamp(1.25rem, 1.6vw, 2rem);
-}
-
-.tarot-card {
-  position: relative;
-  z-index: 1;
   display: flex;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  row-gap: clamp(1.35rem, 2vw, 2.15rem);
+}
+
+.tarot-card-row {
+  display: flex;
+  max-width: 100%;
+  align-items: flex-start;
   justify-content: center;
-  transform-origin: center center;
+  column-gap: var(--spread-gap, 26px);
+}
+
+.tarot-card {
+  --rest-tilt: 0deg;
+  --rest-drop: 0px;
+
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: var(--card-size, 158px);
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 var(--card-size, 158px);
+  justify-content: center;
+  margin-top: var(--rest-drop);
+  transform: rotate(var(--rest-tilt));
+  transform-origin: center 86%;
 }
 
 .tarot-card.is-pending {
@@ -652,7 +690,7 @@ onUnmounted(() => {
   z-index: 1;
   opacity: 1;
   animation: none;
-  transform: none;
+  transform: rotate(var(--rest-tilt));
 }
 
 .tarot-board.is-dealing .tarot-card {
@@ -692,7 +730,7 @@ onUnmounted(() => {
 
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(1) rotate(var(--rest-tilt, 0deg));
   }
 }
 
@@ -715,7 +753,7 @@ onUnmounted(() => {
   .tarot-board-glow-ritual {
     animation: none;
     opacity: 1;
-    transform: none;
+    transform: rotate(var(--rest-tilt, 0deg));
     transition: none;
   }
 }

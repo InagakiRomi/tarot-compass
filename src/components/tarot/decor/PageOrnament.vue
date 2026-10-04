@@ -26,7 +26,7 @@
 <style scoped>
 .page-ornament {
   width: min(100%, 22rem);
-  color: color-mix(in srgb, var(--tarot-gold) 78%, transparent);
+  color: color-mix(in srgb, var(--tarot-gold) 58%, transparent);
 }
 
 .page-ornament svg {

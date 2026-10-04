@@ -49,18 +49,15 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--tarot-gold) 55%, transparent);
+  border: 1px solid rgb(218 183 110 / 0.48);
   border-radius: 0.55rem;
   background:
-    radial-gradient(
-      circle at 50% 15%,
-      rgb(184 135 235 / 0.24),
-      transparent 40%
-    ),
-    linear-gradient(160deg, #43285f, #24152f 55%, #171020);
+    radial-gradient(circle at 50% 25%, rgb(145 93 190 / 0.48), transparent 52%),
+    linear-gradient(160deg, #402556, #21132f 68%, #160d22);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.1),
-    inset 0 0 40px rgb(83 45 110 / 0.16);
+    0 14px 35px rgb(0 0 0 / 0.34),
+    0 0 25px rgb(135 83 181 / 0.08),
+    inset 0 1px rgb(255 255 255 / 0.07);
   transition:
     border-color 0.4s ease,
     box-shadow 0.4s ease;
@@ -99,10 +96,11 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 }
 
 .tarot-back.is-hovered {
-  border-color: color-mix(in srgb, var(--tarot-gold-light) 85%, transparent);
+  border-color: rgb(244 227 178 / 0.82);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.16),
-    inset 0 0 46px rgb(120 70 170 / 0.28);
+    0 18px 40px rgb(0 0 0 / 0.4),
+    0 0 32px rgb(135 83 181 / 0.24),
+    inset 0 1px rgb(255 255 255 / 0.12);
 }
 
 .tarot-back.is-hovered::before {
@@ -119,8 +117,8 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   left: 50%;
   z-index: 0;
   width: 78%;
-  color: var(--tarot-gold-light);
-  opacity: 0.16;
+  color: var(--tarot-gold-dim);
+  opacity: 0.28;
   stroke: currentColor;
   stroke-width: 1.1;
   transform: translate(-50%, -50%);
@@ -130,7 +128,7 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   position: absolute;
   inset: 0.42rem;
   z-index: 1;
-  border: 1px solid color-mix(in srgb, var(--tarot-gold) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tarot-gold-dim) 70%, transparent);
   border-radius: 0.28rem;
   pointer-events: none;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tarot-gold-light) 5%, transparent);
@@ -147,7 +145,7 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 .back-mark::after {
   content: "";
   position: absolute;
-  background: color-mix(in srgb, var(--tarot-gold-light) 72%, transparent);
+  background: color-mix(in srgb, var(--tarot-gold) 78%, transparent);
 }
 
 .back-mark::before {
@@ -211,7 +209,12 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 
 .tarot-back.is-hovered .back-emblem {
   color: var(--tarot-gold-bright);
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tarot-gold-bright) 45%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tarot-gold-bright) 55%, transparent));
+}
+
+.tarot-back.is-hovered .back-sparks {
+  color: var(--tarot-gold-bright);
+  filter: drop-shadow(0 0 6px rgb(244 227 178 / 0.7));
 }
 
 .back-sparks {
@@ -222,8 +225,11 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   display: flex;
   align-items: center;
   gap: 0.72rem;
-  color: color-mix(in srgb, var(--tarot-gold-bright) 78%, transparent);
+  color: color-mix(in srgb, var(--tarot-gold-light) 82%, transparent);
   transform: translateX(-50%);
+  transition:
+    color 0.4s ease,
+    filter 0.4s ease;
 }
 
 .back-sparks span {

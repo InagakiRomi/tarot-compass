@@ -86,6 +86,8 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   position: relative;
   display: flex;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100svh;
   flex: 1 1 auto;
   flex-direction: column;
@@ -104,19 +106,22 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   position: relative;
   z-index: 1;
   display: flex;
-  width: 100%;
+  width: 100vw;
+  max-width: 100vw;
+  min-width: 0;
   min-height: 100%;
   flex: 1 1 auto;
   flex-direction: column;
-  align-items: center;
-  padding: 3.25rem 2.15rem 3.5rem;
+  align-items: stretch;
+  box-sizing: border-box;
+  padding: 4.35rem 3.15rem 4rem;
 }
 
 .aurora {
   position: absolute;
   width: 850px;
   height: 550px;
-  background: radial-gradient(ellipse, rgb(107 64 178 / 0.18), transparent 65%);
+  background: radial-gradient(ellipse, rgb(107 64 178 / 0.1), transparent 65%);
   filter: blur(90px);
   animation: aurora-float 14s ease-in-out infinite alternate;
 }
@@ -131,15 +136,21 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   right: -10%;
   width: 680px;
   height: 460px;
-  background: radial-gradient(ellipse, rgb(141 83 170 / 0.16), transparent 68%);
+  background: radial-gradient(ellipse, rgb(141 83 170 / 0.09), transparent 68%);
   animation-duration: 18s;
   animation-direction: alternate-reverse;
 }
 
 .mystic-orbit {
   position: absolute;
-  border: 1px solid color-mix(in srgb, var(--tarot-gold) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tarot-gold-dim) 80%, transparent);
   border-radius: 50%;
+  opacity: 0.16;
+}
+
+.mystic-orbit-d,
+.mystic-orbit-f {
+  opacity: 0.1;
 }
 
 .mystic-orbit-a {
@@ -192,8 +203,8 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   right: -25px;
   width: 140px;
   height: 140px;
-  color: var(--tarot-gold-light);
-  opacity: 0.2;
+  color: var(--tarot-gold);
+  opacity: 0.14;
 }
 
 .mystic-star {
@@ -227,10 +238,9 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 
 .mystic-frame {
   position: absolute;
-  inset: 0.85rem;
+  inset: 1.55rem;
   z-index: 5;
-  border: 1px solid color-mix(in srgb, var(--tarot-gold) 42%, transparent);
-  box-shadow: inset 0 0 0 8px color-mix(in srgb, var(--tarot-gold) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tarot-gold) 34%, transparent);
   pointer-events: none;
 }
 
@@ -238,35 +248,36 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   position: absolute;
   z-index: 6;
   color: var(--tarot-gold);
+  opacity: 0.72;
   pointer-events: none;
 }
 
 .mystic-corner-tl {
-  top: 0.45rem;
-  left: 0.45rem;
+  top: 1.05rem;
+  left: 1.05rem;
   width: 8.5rem;
   height: 8.5rem;
 }
 
 .mystic-corner-tr {
-  top: 0.7rem;
-  right: 0.7rem;
+  top: 1.3rem;
+  right: 1.3rem;
   width: 4.25rem;
   height: 4.25rem;
   transform: scaleX(-1);
 }
 
 .mystic-corner-bl {
-  bottom: 0.85rem;
-  left: 0.85rem;
+  bottom: 1.25rem;
+  left: 1.25rem;
   width: 4rem;
   height: 4rem;
   transform: scaleY(-1);
 }
 
 .mystic-corner-br {
-  right: 0.4rem;
-  bottom: 0.4rem;
+  right: 1rem;
+  bottom: 1rem;
   width: 8rem;
   height: 8rem;
   transform: scale(-1);
@@ -303,7 +314,31 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 
 @media (max-width: 760px) {
   .mystic-stage {
-    padding: 4.5rem 1.5rem 2.75rem;
+    padding: 4.15rem 1.35rem 3.15rem;
+  }
+
+  .mystic-frame {
+    inset: 0.7rem;
+  }
+
+  .mystic-corner-tl {
+    top: 0.35rem;
+    left: 0.35rem;
+  }
+
+  .mystic-corner-tr {
+    top: 0.55rem;
+    right: 0.55rem;
+  }
+
+  .mystic-corner-bl {
+    bottom: 0.55rem;
+    left: 0.55rem;
+  }
+
+  .mystic-corner-br {
+    right: 0.3rem;
+    bottom: 0.3rem;
   }
 }
 
@@ -328,7 +363,7 @@ const corners = ["tl", "tr", "bl", "br"] as const;
   }
 
   .mystic-frame {
-    inset: 0.45rem;
+    inset: 0.55rem;
   }
 }
 

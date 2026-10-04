@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { usePreferredReducedMotion } from "@vueuse/core";
 import { motion } from "motion-v";
 import TarotCardBack from "@/components/tarot/card/TarotCardBack.vue";
@@ -13,10 +13,13 @@ const props = withDefaults(
     revealDelay?: number;
     /** 蓋回牌背；牌面先留著，翻轉途中正面不會先消失 */
     faceDown?: boolean;
+    /** 略過翻牌與牌名進場 */
+    skipMotion?: boolean;
   }>(),
   {
     revealDelay: 0,
     faceDown: false,
+    skipMotion: false,
   },
 );
 
@@ -24,6 +27,17 @@ const props = withDefaults(
 const showBack = computed(() => props.faceDown || props.card === null);
 const reducedMotion = usePreferredReducedMotion();
 const isHovered = ref(false);
+const revealInstant = ref(prefersInstant());
+
+function prefersInstant() {
+  return props.skipMotion || reducedMotion.value === "reduce";
+}
+
+watch(showBack, (back) => {
+  if (!back) {
+    revealInstant.value = prefersInstant();
+  }
+});
 
 const tilt = ref({ x: 0, y: 0, gx: 50, gy: 16 });
 
@@ -81,11 +95,11 @@ function onPointerLeave() {
         <motion.div
           class="card-flip"
           :animate="{
-            rotateY: showBack ? 0 : [0, -18, -90, -162, -180],
+            rotateY: showBack ? 0 : revealInstant ? -180 : [0, -18, -90, -162, -180],
           }"
           :transition="{
-            duration: reducedMotion === 'reduce' ? 0 : 0.75,
-            delay: showBack || reducedMotion === 'reduce' ? 0 : revealDelay,
+            duration: revealInstant ? 0 : 0.75,
+            delay: showBack || revealInstant ? 0 : revealDelay,
             ease: [0.2, 0.75, 0.25, 1],
           }"
         >
@@ -106,7 +120,10 @@ function onPointerLeave() {
       </div>
     </div>
 
-    <p class="card-name" :class="{ invisible: showBack, 'is-revealed': !showBack }">
+    <p
+      class="card-name"
+      :class="{ invisible: showBack, 'is-revealed': !showBack && !revealInstant }"
+    >
       {{ card?.cardName }}
     </p>
   </div>
@@ -124,21 +141,41 @@ function onPointerLeave() {
 }
 
 .card-tilt {
+  position: relative;
   border-radius: 0.55rem;
   transform: translateY(0) scale(1) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transform-origin: center center;
-  filter: drop-shadow(0 18px 28px rgb(0 0 0 / 0.3));
+  filter: drop-shadow(0 14px 28px rgb(0 0 0 / 0.28));
   transition:
     transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
     filter 0.4s ease;
 }
 
+.card-tilt::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 48%;
+  left: 50%;
+  width: 128%;
+  height: 62%;
+  background: radial-gradient(ellipse, rgb(145 93 190 / 0.42), rgb(83 47 122 / 0.1) 46%, transparent 72%);
+  filter: blur(16px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.4s ease;
+}
+
 .card-tilt.is-hovered {
-  transform: translateY(-10px) scale(1.025) rotateX(var(--rx, 0deg))
-    rotateY(var(--ry, 0deg));
+  transform: translateY(-8px) scale(1.025) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   filter:
-    drop-shadow(0 24px 40px rgb(0 0 0 / 0.42))
-    drop-shadow(0 0 22px rgb(151 95 220 / 0.2));
+    drop-shadow(0 18px 36px rgb(0 0 0 / 0.38))
+    drop-shadow(0 0 26px rgb(135 83 181 / 0.28));
+}
+
+.card-tilt.is-hovered::before {
+  opacity: 1;
 }
 
 .card-scene {
@@ -237,10 +274,15 @@ function onPointerLeave() {
 @media (prefers-reduced-motion: reduce) {
   .card-tilt,
   .card-tilt.is-hovered,
+  .card-tilt::before,
   .card-front::after,
   .card-name.is-revealed {
     animation: none;
     transition: none;
+  }
+
+  .card-tilt,
+  .card-tilt.is-hovered {
     transform: none;
   }
 }

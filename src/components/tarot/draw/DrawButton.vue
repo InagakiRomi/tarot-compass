@@ -44,6 +44,7 @@ function handleAnimationEnd(event: AnimationEvent) {
   <Button
     class="draw-button"
     :class="{ 'is-casting': isCasting }"
+    variant="ghost"
     type="button"
     @click="handleClick"
   >
@@ -60,7 +61,7 @@ function handleAnimationEnd(event: AnimationEvent) {
       </span>
     </span>
 
-    <span class="draw-label">抽牌</span>
+    <span class="draw-label">開始抽牌</span>
   </Button>
 </template>
 
@@ -68,45 +69,58 @@ function handleAnimationEnd(event: AnimationEvent) {
 .draw-button {
   position: relative;
   isolation: isolate;
-  height: 54px;
-  min-width: 15.5rem;
-  padding: 0 2.75rem;
+  height: 48px;
+  min-width: 11.5rem;
+  padding: 0 1.55rem 0 2.7rem;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 0.16);
+  border: 1px solid rgb(231 195 118 / 0.65);
   border-radius: 9999px;
-  color: var(--tarot-text);
-  font-size: 1.2rem;
-  font-weight: 650;
-  letter-spacing: 0.22em;
-  background-image: linear-gradient(
-    110deg,
-    var(--tarot-purple-300),
-    var(--tarot-purple-500),
-    var(--tarot-purple-400),
-    var(--tarot-purple-600)
-  );
-  background-size: 250% 100%;
-  background-position: 0% 50%;
+  color: var(--tarot-gold-light);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  background: linear-gradient(110deg, rgb(74 42 85 / 0.95), rgb(43 25 55 / 0.96));
   box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.35),
-    0 10px 30px rgb(112 62 180 / 0.35),
-    0 0 0 1px rgb(180 140 235 / 0.2);
+    inset 0 1px rgb(255 255 255 / 0.08),
+    0 8px 30px rgb(0 0 0 / 0.3),
+    0 0 20px rgb(211 168 92 / 0.08);
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease,
-    filter 0.25s ease;
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.draw-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    100deg,
+    transparent 34%,
+    rgb(244 227 178 / 0.16) 50%,
+    transparent 66%
+  );
+  pointer-events: none;
+  transform: translateX(-130%);
 }
 
 .draw-button:hover,
 .draw-button:focus-visible {
+  border-color: rgb(244 227 178 / 0.9);
+  color: var(--tarot-gold-bright);
+  background: linear-gradient(110deg, rgb(86 48 98 / 0.98), rgb(48 28 62 / 0.98));
   transform: translateY(-2px);
-  filter: brightness(1.06);
-  animation: button-flow 4s linear infinite;
   box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.42),
-    0 16px 42px rgb(124 72 196 / 0.5),
-    0 0 28px rgb(168 120 230 / 0.28),
-    0 0 0 1px rgb(210 180 245 / 0.35);
+    inset 0 1px rgb(255 255 255 / 0.1),
+    0 10px 35px rgb(0 0 0 / 0.35),
+    0 0 28px rgb(218 177 95 / 0.22);
+}
+
+.draw-button:hover::after,
+.draw-button:focus-visible::after {
+  animation: gold-sweep 0.95s ease;
 }
 
 .draw-button:focus-visible {
@@ -115,13 +129,12 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .draw-button:active {
   transform: translateY(0) scale(0.98);
-  filter: brightness(1.02);
 }
 
 .draw-button-icon {
   position: absolute;
   top: 50%;
-  left: 1.45rem;
+  left: 1.05rem;
   z-index: 2;
   display: inline-flex;
   width: 1.3rem;
@@ -134,7 +147,7 @@ function handleAnimationEnd(event: AnimationEvent) {
 .draw-star {
   width: 1.3rem;
   height: 1.3rem;
-  fill: var(--tarot-text);
+  fill: var(--tarot-gold-bright);
   color: var(--tarot-gold-bright);
 }
 
@@ -180,9 +193,7 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .draw-button.is-casting {
-  animation:
-    click-pulse 0.55s ease-out,
-    button-flow 4s linear infinite;
+  animation: click-pulse 0.55s ease-out;
 }
 
 .draw-button.is-casting .draw-star {
@@ -193,13 +204,13 @@ function handleAnimationEnd(event: AnimationEvent) {
   animation: spark-burst 0.65s ease-out forwards;
 }
 
-@keyframes button-flow {
+@keyframes gold-sweep {
   from {
-    background-position: 0% 50%;
+    transform: translateX(-130%);
   }
 
   to {
-    background-position: 100% 50%;
+    transform: translateX(130%);
   }
 }
 
@@ -259,6 +270,7 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 @media (prefers-reduced-motion: reduce) {
   .draw-button,
+  .draw-button::after,
   .draw-button.is-casting,
   .draw-button.is-casting .draw-star,
   .draw-button.is-casting .draw-burst i {

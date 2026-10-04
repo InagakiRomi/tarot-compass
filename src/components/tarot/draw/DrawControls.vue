@@ -3,12 +3,16 @@ import { ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import DrawButton from "@/components/tarot/draw/DrawButton.vue";
 import DrawCountInput from "@/components/tarot/draw/DrawCountInput.vue";
+import SkipMotionSwitch from "@/components/tarot/draw/SkipMotionSwitch.vue";
 
 const props = defineProps<{
   modelValue: number;
   min: number;
   max: number;
+  disabled?: boolean;
 }>();
+
+const skipMotion = defineModel<boolean>("skipMotion", { required: true });
 
 const emit = defineEmits<{
   "update:modelValue": [value: number];
@@ -127,17 +131,26 @@ function onDrawClick() {
   <div class="draw-controls">
     <span class="draw-count-label" id="draw-count-label">抽牌數量</span>
 
-    <DrawCountInput
-      v-model="rawCount"
-      aria-labelledby="draw-count-label"
-      @blur="onCountBlur"
-      @decrease="decreaseCount"
-      @increase="increaseCount"
-    />
+    <div class="draw-dock">
+      <DrawCountInput
+        v-model="rawCount"
+        aria-labelledby="draw-count-label"
+        @blur="onCountBlur"
+        @decrease="decreaseCount"
+        @increase="increaseCount"
+      />
 
-    <div ref="drawActionRef" class="draw-action">
-      <DrawButton @click="onDrawClick" />
+      <span class="draw-dock-rule" aria-hidden="true" />
+
+      <div ref="drawActionRef" class="draw-action">
+        <DrawButton @click="onDrawClick" />
+      </div>
     </div>
+
+    <label class="skip-motion" :class="{ 'is-disabled': disabled }">
+      <span class="skip-motion-label">跳過動畫</span>
+      <SkipMotionSwitch v-model="skipMotion" :disabled="disabled" />
+    </label>
   </div>
 </template>
 
@@ -145,37 +158,84 @@ function onDrawClick() {
 .draw-controls {
   display: flex;
   width: 100%;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   margin-block: 0 0.15rem;
-  gap: 0.9rem 1.75rem;
+  gap: 0.5rem;
 }
 
 .draw-count-label {
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  letter-spacing: 0.22em;
+  color: #d5cbe4;
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+}
+
+.draw-dock {
+  display: flex;
+  align-items: center;
+  padding: 0.28rem 0.28rem 0.28rem 0.2rem;
+  border: 1px solid rgb(210 174 102 / 0.26);
+  border-radius: 999px;
+  background: rgb(12 6 20 / 0.5);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 0.04),
+    0 18px 40px rgb(0 0 0 / 0.24);
+  backdrop-filter: blur(12px);
+}
+
+.draw-dock-rule {
+  width: 1px;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  margin-inline: 0.2rem 0.45rem;
+  background: rgb(143 115 70 / 0.55);
 }
 
 .draw-action {
   display: flex;
 }
 
+.skip-motion {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.15rem;
+  cursor: pointer;
+  gap: 0.55rem;
+  user-select: none;
+}
+
+.skip-motion.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.skip-motion-label {
+  color: #d5cbe4;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+}
+
 @media (max-width: 760px) {
   .draw-controls {
+    width: min(100%, 22rem);
+  }
+
+  .draw-dock {
     flex-direction: column;
-    align-items: center;
-    width: min(100%, 20rem);
-    gap: 0.85rem;
+    width: 100%;
+    padding: 0.4rem;
+    border-radius: 1.4rem;
+    gap: 0.2rem;
+  }
+
+  .draw-dock-rule {
+    width: 72%;
+    height: 1px;
+    margin: 0.2rem 0 0.15rem;
   }
 
   .draw-action {
     width: 100%;
-  }
-
-  .draw-count-label {
-    text-align: center;
   }
 }
 </style>

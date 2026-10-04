@@ -1,39 +1,10 @@
 <script setup lang="ts">
-/** 牌桌四角的小型角花 */
+/** 舞台四角的細線，不再加內框或圓形星盤 */
 const corners = ["tl", "tr", "bl", "br"] as const;
-
-/** 星盤外圈的星位，避免再堆菱形花紋 */
-const starPoints = [
-  { cx: 400, cy: 58 },
-  { cx: 612, cy: 268 },
-  { cx: 400, cy: 478 },
-  { cx: 188, cy: 268 },
-  { cx: 550, cy: 118 },
-  { cx: 250, cy: 418 },
-  { cx: 546, cy: 412 },
-  { cx: 254, cy: 124 },
-];
 </script>
 
 <template>
   <div class="tarot-board-pattern" aria-hidden="true">
-    <svg class="board-chart" viewBox="0 0 800 536" fill="none">
-      <circle cx="400" cy="268" r="210" />
-      <circle cx="400" cy="268" r="148" />
-      <circle cx="400" cy="268" r="84" />
-      <path d="M400 58v420M190 268h420" />
-      <path d="M251 119 549 417M549 119 251 417" />
-      <path d="M292 78 508 458M508 78 292 458M188 176l424 184M612 176 188 360" />
-      <circle
-        v-for="(point, index) in starPoints"
-        :key="index"
-        :cx="point.cx"
-        :cy="point.cy"
-        r="2.4"
-        fill="currentColor"
-      />
-    </svg>
-
     <span
       v-for="corner in corners"
       :key="corner"
@@ -50,33 +21,21 @@ const starPoints = [
   overflow: hidden;
   border-radius: inherit;
   pointer-events: none;
-  color: var(--tarot-gold-light);
-}
-
-.board-chart {
-  position: absolute;
-  left: 50%;
-  top: 48%;
-  width: min(760px, 94%);
-  height: auto;
-  opacity: 0.08;
-  stroke: currentColor;
-  stroke-width: 1.15;
-  transform: translate(-50%, -50%);
+  color: var(--tarot-gold-dim);
 }
 
 .board-corner {
   position: absolute;
-  width: 0.85rem;
-  height: 0.85rem;
-  opacity: 0.7;
+  width: 0.7rem;
+  height: 0.7rem;
+  opacity: 0.55;
 }
 
 .board-corner::before,
 .board-corner::after {
   content: "";
   position: absolute;
-  background: color-mix(in srgb, var(--tarot-gold) 50%, transparent);
+  background: color-mix(in srgb, var(--tarot-gold) 42%, transparent);
 }
 
 .board-corner::before {
