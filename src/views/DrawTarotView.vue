@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { storeToRefs } from "pinia";
 import { toast } from "vue-sonner";
 
-import type { DeckType } from "@/components/tarot/draw/DeckTypeToggle.vue";
 import DrawControls from "@/components/tarot/draw/DrawControls.vue";
 import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
 import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
@@ -13,12 +13,10 @@ import {
   useTarotDeck,
   type TarotCard as TarotCardData,
 } from "@/composables/useTarotDeck";
+import { useDrawStore } from "@/stores/draw";
 
 /** 最少允許抽取的牌數 */
 const MIN_DRAW_COUNT = 1;
-
-/** 預設抽取與初始顯示的牌數 */
-const DEFAULT_COUNT = 5;
 
 /** 中央牌堆出現並微微放大的時間，尾段即停留 */
 const GATHER_MS = 400;
@@ -38,32 +36,25 @@ type SpreadLayout = {
 };
 
 const { tarotCards, draw } = useTarotDeck();
+const drawStore = useDrawStore();
+const { deckType, drawCount, skipMotion, cards, maxDrawCount } = storeToRefs(drawStore);
 
 function createSpread(count: number): (TarotCardData | null)[] {
   return Array.from({ length: count }, () => null);
 }
 
-const deckType = ref<DeckType>("minor");
-const drawCount = ref(DEFAULT_COUNT);
-
-const maxDrawCount = computed(() => {
-  return deckType.value === "major" ? 22 : 78;
-});
-
 const availableCards = computed(() => {
   return deckType.value === "major" ? tarotCards.slice(0, 22) : tarotCards;
 });
-const skipMotion = ref(false);
 const drawId = ref(0);
 const isRitual = ref(false);
 const dealPhase = ref<DealPhase>("idle");
 const faceDown = ref(false);
 const useDealDelay = ref(false);
-const cards = ref<(TarotCardData | null)[]>(createSpread(DEFAULT_COUNT));
 const listRef = ref<HTMLElement | null>(null);
 const containerWidth = ref(estimateContainerWidth());
 const spreadLayout = ref<SpreadLayout>(
-  computeSpread(DEFAULT_COUNT, containerWidth.value, viewportWidth()),
+  computeSpread(cards.value.length, containerWidth.value, viewportWidth()),
 );
 const offsets = ref<{ x: number; y: number }[]>([]);
 const settled = ref<boolean[]>([]);
@@ -300,12 +291,6 @@ function nextFrame() {
 function syncSpread(count: number) {
   cards.value = createSpread(count);
 }
-
-watch(deckType, () => {
-  if (drawCount.value > maxDrawCount.value) {
-    drawCount.value = maxDrawCount.value;
-  }
-});
 
 watch(drawCount, (count) => {
   if (isRitual.value) {

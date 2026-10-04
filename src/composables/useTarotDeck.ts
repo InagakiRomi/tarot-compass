@@ -42,7 +42,7 @@ function toCard(record: TarotRecord): TarotCard {
 }
 
 /** 可抽出的牌面，只保留有牌名的資料 */
-const deck = (tarotData as TarotRecord[])
+export const tarotCards = (tarotData as TarotRecord[])
   .map(toCard)
   .filter((card) => card.cardName.length > 0);
 
@@ -79,8 +79,8 @@ export function useTarotDeck() {
   }
 
   return {
-    tarotCards: deck,
-    deckSize: deck.length,
+    tarotCards,
+    deckSize: tarotCards.length,
     draw,
   };
 }
