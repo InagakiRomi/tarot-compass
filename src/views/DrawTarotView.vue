@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 
+import type { DeckType } from "@/components/tarot/draw/DeckTypeToggle.vue";
 import DrawControls from "@/components/tarot/draw/DrawControls.vue";
 import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
 import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
@@ -14,9 +15,6 @@ import {
 
 /** 最少允許抽取的牌數 */
 const MIN_DRAW_COUNT = 1;
-
-/** 最多允許抽取的牌數，一副塔羅共 78 張 */
-const MAX_DRAW_COUNT = 78;
 
 /** 預設抽取與初始顯示的牌數 */
 const DEFAULT_COUNT = 5;
@@ -38,13 +36,22 @@ type SpreadLayout = {
   columnGap: string;
 };
 
-const { deckSize, draw } = useTarotDeck();
+const { tarotCards, draw } = useTarotDeck();
 
 function createSpread(count: number): (TarotCardData | null)[] {
   return Array.from({ length: count }, () => null);
 }
 
+const deckType = ref<DeckType>("minor");
 const drawCount = ref(DEFAULT_COUNT);
+
+const maxDrawCount = computed(() => {
+  return deckType.value === "major" ? 22 : 78;
+});
+
+const availableCards = computed(() => {
+  return deckType.value === "major" ? tarotCards.slice(0, 22) : tarotCards;
+});
 const skipMotion = ref(false);
 const drawId = ref(0);
 const isRitual = ref(false);
@@ -64,7 +71,6 @@ let timers: number[] = [];
 let resizeObserver: ResizeObserver | undefined;
 let alive = true;
 
-const maxCount = computed(() => Math.min(MAX_DRAW_COUNT, deckSize));
 const isDealing = computed(() => dealPhase.value !== "idle");
 
 const gridStyle = computed(() => ({
@@ -290,6 +296,12 @@ function syncSpread(count: number) {
   cards.value = createSpread(count);
 }
 
+watch(deckType, () => {
+  if (drawCount.value > maxDrawCount.value) {
+    drawCount.value = maxDrawCount.value;
+  }
+});
+
 watch(drawCount, (count) => {
   if (isRitual.value) {
     return;
@@ -353,7 +365,7 @@ function onCardAnimationEnd(event: AnimationEvent, index: number) {
 }
 
 async function startDeal(count: number, reducedMotion: boolean) {
-  const drawn = draw(count);
+  const drawn = draw(availableCards.value, count);
 
   clearTimers();
   offsets.value = [];
@@ -413,7 +425,7 @@ function beginRitual() {
     return;
   }
 
-  const count = Math.min(maxCount.value, Math.max(MIN_DRAW_COUNT, drawCount.value));
+  const count = Math.min(maxDrawCount.value, Math.max(MIN_DRAW_COUNT, drawCount.value));
   const reducedMotion =
     skipMotion.value || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -504,9 +516,10 @@ onUnmounted(() => {
 
         <DrawControls
           v-model="drawCount"
+          v-model:deck-type="deckType"
           v-model:skip-motion="skipMotion"
           :min="MIN_DRAW_COUNT"
-          :max="maxCount"
+          :max="maxDrawCount"
           :disabled="isRitual"
           @draw="beginRitual"
         />

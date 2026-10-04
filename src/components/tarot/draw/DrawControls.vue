@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { toast } from "vue-sonner";
+import DeckTypeToggle, {
+  type DeckType,
+} from "@/components/tarot/draw/DeckTypeToggle.vue";
 import DrawButton from "@/components/tarot/draw/DrawButton.vue";
 import DrawCountInput from "@/components/tarot/draw/DrawCountInput.vue";
 import SkipMotionSwitch from "@/components/tarot/draw/SkipMotionSwitch.vue";
@@ -13,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const skipMotion = defineModel<boolean>("skipMotion", { required: true });
+const deckType = defineModel<DeckType>("deckType", { required: true });
 
 const emit = defineEmits<{
   "update:modelValue": [value: number];
@@ -41,8 +45,22 @@ function warnDrawCount() {
   toast.warning(`請輸入 ${props.min}～${props.max} 之間的整數`);
 }
 
-function rejectDrawCount() {
-  warnDrawCount();
+function warnMaxDrawCount() {
+  if (deckType.value === "major") {
+    toast.warning(`大阿爾卡納最多只能抽 ${props.max} 張牌`);
+    return;
+  }
+
+  toast.warning(`目前牌組最多只能抽 ${props.max} 張牌`);
+}
+
+function rejectDrawCount(overMax = false) {
+  if (overMax) {
+    warnMaxDrawCount();
+  } else {
+    warnDrawCount();
+  }
+
   rawCount.value = String(props.modelValue);
   return false;
 }
@@ -56,7 +74,11 @@ function validateDrawCount() {
 
   const value = Number(raw);
 
-  if (value < props.min || value > props.max) {
+  if (value > props.max) {
+    return rejectDrawCount(true);
+  }
+
+  if (value < props.min) {
     return rejectDrawCount();
   }
 
@@ -98,7 +120,7 @@ function increaseCount() {
   }
 
   if (props.modelValue >= props.max) {
-    warnDrawCount();
+    warnMaxDrawCount();
     return;
   }
 
@@ -129,11 +151,15 @@ function onDrawClick() {
 
 <template>
   <div class="draw-controls">
+    <DeckTypeToggle v-model="deckType" :disabled="disabled" />
+
     <span class="draw-count-label" id="draw-count-label">抽牌數量</span>
 
     <div class="draw-dock">
       <DrawCountInput
         v-model="rawCount"
+        :min="min"
+        :max="max"
         aria-labelledby="draw-count-label"
         @blur="onCountBlur"
         @decrease="decreaseCount"
@@ -161,7 +187,7 @@ function onDrawClick() {
   flex-direction: column;
   align-items: center;
   margin-block: 0 0.15rem;
-  gap: 0.5rem;
+  gap: 0.7rem;
 }
 
 .draw-count-label {

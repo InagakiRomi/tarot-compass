@@ -45,7 +45,7 @@ const deck = (tarotData as TarotRecord[])
   .filter((card) => card.cardName.length > 0);
 
 /** 洗牌 */
-function shuffle<T>(items: T[]): T[] {
+function shuffle<T>(items: readonly T[]): T[] {
   const shuffled = [...items];
 
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -67,16 +67,17 @@ function shuffle<T>(items: T[]): T[] {
 
 /** 抽牌 */
 export function useTarotDeck() {
-  /** 抽指定數量的塔羅牌 */
-  function draw(count: number): TarotCard[] {
-    if (count <= 0) {
+  /** 從指定牌池洗牌後抽出指定數量 */
+  function draw(source: readonly TarotCard[], count: number): TarotCard[] {
+    if (count <= 0 || source.length === 0) {
       return [];
     }
 
-    return shuffle(deck).slice(0, count);
+    return shuffle(source).slice(0, count);
   }
 
   return {
+    tarotCards: deck,
     deckSize: deck.length,
     draw,
   };

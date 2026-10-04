@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 
 defineProps<{
   modelValue: string;
+  min: number;
+  max: number;
 }>();
 
 const emit = defineEmits<{
@@ -61,6 +63,8 @@ function onFocus(event: FocusEvent) {
 
     <Input
       :model-value="modelValue"
+      :min="min"
+      :max="max"
       class="draw-count-input"
       inputmode="numeric"
       autocomplete="off"
