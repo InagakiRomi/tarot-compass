@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
+import SiteNav from "@/components/layout/SiteNav.vue";
 import { Toaster } from "@/components/ui/sonner";
 </script>
 
 <template>
-  <RouterView />
+  <div class="app-shell">
+    <SiteNav />
+    <RouterView />
+  </div>
   <Toaster
     theme="dark"
     position="top-center"
@@ -21,6 +25,20 @@ import { Toaster } from "@/components/ui/sonner";
       '--warning-border': 'rgba(234, 215, 162, 0.48)',
       '--warning-text': '#ead7a2',
       '--border-radius': '14px',
+      '--offset-top': '4.6rem',
     }"
   />
 </template>
+
+<style scoped>
+.app-shell {
+  --site-nav-height: 3.25rem;
+  min-height: 100svh;
+}
+
+.app-shell :deep(.tarot-page),
+.app-shell :deep(.history-page),
+.app-shell :deep(.mystic-background) {
+  min-height: calc(100svh - var(--site-nav-height));
+}
+</style>
