@@ -1,6 +1,38 @@
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+import { toast } from "vue-sonner";
+
 import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
 import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
+import HistoryRecordTable from "@/components/tarot/history/HistoryRecordTable.vue";
+import { MAX_HISTORY_RECORDS, useHistoryStore, type DrawHistoryRecord } from "@/stores/history";
+
+const historyStore = useHistoryStore();
+const { records } = storeToRefs(historyStore);
+
+function formatReading(record: DrawHistoryRecord) {
+  return record.cards
+    .map((card) => `${card.cardName}${card.reversed ? "逆位" : "正位"}`)
+    .join("\n");
+}
+
+async function copyRecord(record: DrawHistoryRecord) {
+  try {
+    await navigator.clipboard.writeText(formatReading(record));
+    toast.success("已複製抽牌結果");
+  } catch {
+    toast.error("複製失敗，請再試一次");
+  }
+}
+
+function clearRecords() {
+  if (records.value.length === 0) {
+    return;
+  }
+
+  historyStore.clearHistory();
+  toast.success("已清除歷史紀錄");
+}
 </script>
 
 <template>
@@ -10,8 +42,23 @@ import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
         <header class="history-heading">
           <p class="history-heading-en">History</p>
           <h1 class="history-heading-title">歷史紀錄</h1>
+          <p class="history-heading-note">最近 {{ MAX_HISTORY_RECORDS }} 次抽牌會留在這台裝置上</p>
         </header>
         <PageOrnament />
+
+        <section class="history-board" aria-label="抽牌歷史">
+          <HistoryRecordTable :records="records" @copy="copyRecord" />
+          <div class="history-actions">
+            <button
+              type="button"
+              class="history-clear"
+              :disabled="records.length === 0"
+              @click="clearRecords"
+            >
+              清除紀錄
+            </button>
+          </div>
+        </section>
       </div>
     </OracleBackdrop>
   </main>
@@ -80,5 +127,62 @@ import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
   letter-spacing: 0.28em;
   line-height: 1.2;
   text-indent: 0.28em;
+}
+
+.history-heading-note {
+  width: min(28rem, calc(100vw - 4.5rem));
+  margin: 0.35rem 0 0;
+  color: var(--text-muted, #afa4c1);
+  font-size: calc(0.92rem + 2px);
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+}
+
+.history-board {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 0.85rem;
+  padding: 1.15rem 1.15rem 1.25rem;
+  border: 1px solid rgb(210 174 102 / 0.32);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(132 84 180 / 0.12), transparent 48%),
+    rgb(16 8 27 / 0.48);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 0.04),
+    0 30px 80px rgb(0 0 0 / 0.28);
+}
+
+.history-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.15rem;
+}
+
+.history-clear {
+  height: 2.5rem;
+  padding: 0 1.35rem;
+  border: 1px solid rgb(210 174 102 / 0.4);
+  border-radius: 999px;
+  color: var(--tarot-gold-light);
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  background: rgb(16 8 27 / 0.35);
+  cursor: pointer;
+}
+
+.history-clear:hover,
+.history-clear:focus-visible {
+  border-color: rgb(231 195 118 / 0.72);
+  color: var(--tarot-gold-bright);
+  background: rgb(22 12 36 / 0.55);
+  outline: none;
+}
+
+.history-clear:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 </style>

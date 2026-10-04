@@ -14,6 +14,7 @@ import {
   type TarotCard as TarotCardData,
 } from "@/composables/useTarotDeck";
 import { useDrawStore } from "@/stores/draw";
+import { useHistoryStore } from "@/stores/history";
 
 /** 最少允許抽取的牌數 */
 const MIN_DRAW_COUNT = 1;
@@ -37,6 +38,7 @@ type SpreadLayout = {
 
 const { tarotCards, draw } = useTarotDeck();
 const drawStore = useDrawStore();
+const historyStore = useHistoryStore();
 const { deckType, drawCount, skipMotion, cards, maxDrawCount } = storeToRefs(drawStore);
 
 function createSpread(count: number): (TarotCardData | null)[] {
@@ -366,7 +368,7 @@ async function startDeal(count: number, reducedMotion: boolean) {
   if (reducedMotion) {
     faceDown.value = false;
     drawId.value += 1;
-    cards.value = withOrientation(drawn);
+    cards.value = commitDraw(drawn);
     finishRitual();
     return;
   }
@@ -374,7 +376,7 @@ async function startDeal(count: number, reducedMotion: boolean) {
   faceDown.value = true;
   dealPhase.value = "pending";
   drawId.value += 1;
-  cards.value = withOrientation(drawn);
+  cards.value = commitDraw(drawn);
 
   await nextTick();
   await nextFrame();
@@ -415,6 +417,20 @@ function withOrientation(drawn: TarotCardData[]) {
     ...card,
     reversed: Math.random() < 0.5,
   }));
+}
+
+function commitDraw(drawn: TarotCardData[]) {
+  const oriented = withOrientation(drawn);
+
+  historyStore.recordDraw(
+    oriented.map((card) => ({
+      cardId: card.cardId,
+      cardName: card.cardName,
+      reversed: Boolean(card.reversed),
+    })),
+  );
+
+  return oriented;
 }
 
 function formatReading(drawn: TarotCardData[]) {
