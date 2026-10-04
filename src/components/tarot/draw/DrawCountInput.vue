@@ -89,21 +89,28 @@ function onFocus(event: FocusEvent) {
 <style scoped>
 .draw-count {
   display: flex;
+  width: 100%;
   align-items: center;
-  height: 48px;
-  padding-inline: 0.1rem;
+  justify-content: space-between;
+  height: 56px;
+  padding-inline: 0.15rem;
   color: var(--tarot-text);
 }
 
 .draw-count button {
+  display: inline-flex;
+  flex: 0 0 48px;
   width: 48px;
   height: 100%;
+  align-items: center;
+  justify-content: center;
   border: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--tarot-gold-light) 72%, var(--tarot-text));
-  font-size: 20px;
+  color: color-mix(in srgb, var(--tarot-gold-light) 82%, var(--tarot-text));
+  font-size: var(--font-size-stepper);
+  font-weight: 500;
   line-height: 1;
-  opacity: 0.82;
+  opacity: 0.92;
   cursor: pointer;
   transition:
     opacity 0.2s,
@@ -123,17 +130,19 @@ function onFocus(event: FocusEvent) {
 }
 
 .draw-count :deep(.draw-count-input) {
-  width: 56px;
+  width: auto;
   height: auto;
-  flex: 0 0 56px;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: inherit;
   text-align: center;
-  font-size: 22px;
+  font-size: var(--font-size-value);
   font-weight: 600;
+  line-height: 1.2;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   box-shadow: none;

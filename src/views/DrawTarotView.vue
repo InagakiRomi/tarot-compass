@@ -74,6 +74,10 @@ let alive = true;
 
 const isDealing = computed(() => dealPhase.value !== "idle");
 
+const hasReading = computed(
+  () => !isRitual.value && cards.value.some((card) => card !== null),
+);
+
 const gridStyle = computed(() => ({
   "--spread-cols": String(spreadLayout.value.cols),
   "--card-size": spreadLayout.value.cardSize,
@@ -113,18 +117,18 @@ function estimateContainerWidth() {
 
 function cardBand(count: number) {
   if (count <= 5) {
-    return { ideal: 158, min: 140, max: 165 };
+    return { ideal: 176, min: 148, max: 188 };
   }
 
   if (count <= 8) {
-    return { ideal: 136, min: 120, max: 145 };
+    return { ideal: 152, min: 128, max: 164 };
   }
 
   if (count <= 12) {
-    return { ideal: 122, min: 108, max: 130 };
+    return { ideal: 136, min: 116, max: 148 };
   }
 
-  return { ideal: 110, min: 100, max: 120 };
+  return { ideal: 122, min: 104, max: 132 };
 }
 
 /** 先決定希望的列數；真的塞不下時再減少欄數 */
@@ -158,7 +162,7 @@ function preferredColumns(count: number, viewport: number) {
 
 function computeSpread(count: number, rawWidth: number, viewport: number): SpreadLayout {
   const safeCount = Math.max(1, count);
-  const gap = viewport < 720 ? 16 : 26;
+  const gap = viewport < 720 ? 16 : 28;
   const available = Math.max(160, Math.floor(rawWidth) - 2);
   const band = cardBand(safeCount);
 
@@ -507,53 +511,55 @@ onUnmounted(() => {
           <div class="tarot-board-glow tarot-board-glow-ritual" aria-hidden="true" />
           <TarotBoardPattern />
 
-          <div
-            ref="listRef"
-            class="tarot-card-list"
-            :style="gridStyle"
-            :data-cols="spreadLayout.cols"
-            :data-card-size="spreadLayout.cardSize"
-            :data-deal="dealPhase"
+          <DrawControls
+            v-model="drawCount"
+            v-model:deck-type="deckType"
+            v-model:skip-motion="skipMotion"
+            :min="MIN_DRAW_COUNT"
+            :max="maxDrawCount"
+            :disabled="isRitual"
+            :can-copy="hasReading"
+            :spread-count="cards.length"
+            @draw="beginRitual"
+            @copy="copyResult"
           >
             <div
-              v-for="(row, rowIndex) in cardRows"
-              :key="`${drawId}-row-${rowIndex}`"
-              class="tarot-card-row"
+              ref="listRef"
+              class="tarot-card-list"
+              :style="gridStyle"
+              :data-cols="spreadLayout.cols"
+              :data-card-size="spreadLayout.cardSize"
+              :data-deal="dealPhase"
             >
               <div
-                v-for="entry in row"
-                :key="`${drawId}-${entry.index}`"
-                class="tarot-card"
-                :class="{
-                  'is-pending': dealPhase === 'pending',
-                  'is-gathering': dealPhase === 'gathering',
-                  'is-flying': dealPhase === 'flying' && !settled[entry.index],
-                  'is-settled': dealPhase === 'flying' && settled[entry.index],
-                }"
-                :style="cardMotionStyle(entry.index)"
-                @animationend="onCardAnimationEnd($event, entry.index)"
+                v-for="(row, rowIndex) in cardRows"
+                :key="`${drawId}-row-${rowIndex}`"
+                class="tarot-card-row"
               >
-                <TarotCard
-                  :card="entry.card"
-                  :face-down="faceDown"
-                  :reveal-delay="revealDelayFor(entry.index)"
-                  :skip-motion="skipMotion"
-                />
+                <div
+                  v-for="entry in row"
+                  :key="`${drawId}-${entry.index}`"
+                  class="tarot-card"
+                  :class="{
+                    'is-pending': dealPhase === 'pending',
+                    'is-gathering': dealPhase === 'gathering',
+                    'is-flying': dealPhase === 'flying' && !settled[entry.index],
+                    'is-settled': dealPhase === 'flying' && settled[entry.index],
+                  }"
+                  :style="cardMotionStyle(entry.index)"
+                  @animationend="onCardAnimationEnd($event, entry.index)"
+                >
+                  <TarotCard
+                    :card="entry.card"
+                    :face-down="faceDown"
+                    :reveal-delay="revealDelayFor(entry.index)"
+                    :skip-motion="skipMotion"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          </DrawControls>
         </section>
-
-        <DrawControls
-          v-model="drawCount"
-          v-model:deck-type="deckType"
-          v-model:skip-motion="skipMotion"
-          :min="MIN_DRAW_COUNT"
-          :max="maxDrawCount"
-          :disabled="isRitual"
-          @draw="beginRitual"
-          @copy="copyResult"
-        />
 
         <PageOrnament />
       </div>
@@ -617,7 +623,7 @@ onUnmounted(() => {
   margin-inline: auto;
   flex-direction: column;
   align-items: center;
-  margin-block: auto;
+  margin-block: 0;
   gap: 0.55rem;
 }
 
@@ -628,9 +634,9 @@ onUnmounted(() => {
   max-width: 100%;
   min-width: 0;
   margin-inline: auto;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0;
   overflow: visible;
-  padding: 1.35rem 1.45rem 0.7rem;
+  padding: 1.5rem 1.65rem 1.45rem;
   border: 1px solid rgb(210 174 102 / 0.32);
   border-radius: 22px;
   background:

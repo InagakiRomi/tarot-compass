@@ -53,6 +53,14 @@
     --purple-dark: #5c319f;
     --text-muted: #afa4c1;
 
+    --font-size-caption: 12px;
+    --font-size-label: 13px;
+    --font-size-body: 14px;
+    --font-size-button: 16px;
+    --font-size-card-name: 14px;
+    --font-size-value: 20px;
+    --font-size-stepper: 18px;
+
     --tarot-text: #f1ebfa;
     --tarot-gold-dim: #8f7346;
     --tarot-gold: #d2ae66;
@@ -75,9 +83,10 @@
 
   html {
     background: var(--bg-dark);
+    font-size: 16px;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans text-base;
   }
 }

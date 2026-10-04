@@ -247,13 +247,12 @@ function onPointerLeave() {
 }
 
 .card-name {
-  min-height: 1.25rem;
+  min-height: calc(var(--font-size-card-name) * 1.4);
   color: var(--tarot-text);
-  font-size: 0.95rem;
-  line-height: 1.25;
+  font-size: var(--font-size-card-name);
   font-weight: 500;
+  line-height: 1.4;
   text-align: center;
-  overflow-wrap: anywhere;
 }
 
 .card-name.is-revealed {
@@ -262,10 +261,12 @@ function onPointerLeave() {
 }
 
 .card-orientation {
-  margin-left: 0.28rem;
+  margin-left: 0.5rem;
   color: var(--tarot-gold-light, #e7c376);
-  font-size: 0.78em;
-  letter-spacing: 0.08em;
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 @keyframes card-shine {

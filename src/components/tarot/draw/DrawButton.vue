@@ -3,13 +3,21 @@ import { nextTick, ref } from "vue";
 import { Sparkle } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 
+withDefaults(
+  defineProps<{
+    label?: string;
+  }>(),
+  {
+    label: "抽牌",
+  },
+);
+
 const emit = defineEmits<{
   click: [];
 }>();
 
 const isCasting = ref(false);
 
-/** 點擊時由星星向外散開的一次爆光，不循環 */
 const burstRays = [
   { x: "0px", y: "-22px", star: true },
   { x: "18px", y: "-12px", star: false },
@@ -42,53 +50,68 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 <template>
   <Button
-    class="draw-button"
+    class="draw-button relative isolate h-14 w-60 min-w-57.5 overflow-hidden rounded-full border px-[1.35rem] pl-[2.7rem] text-(length:--font-size-button) font-medium leading-none tracking-[0.16em] transition-[transform,box-shadow,border-color,background,color] duration-200 max-[720px]:w-full max-[720px]:min-w-0"
     :class="{ 'is-casting': isCasting }"
     variant="ghost"
     type="button"
     @click="handleClick"
   >
-    <span class="draw-button-icon" aria-hidden="true">
-      <Sparkle class="draw-star" :stroke-width="1.4" />
+    <span
+      class="draw-button-icon absolute left-[1.05rem] top-1/2 z-2 inline-flex size-5 -translate-y-1/2 items-center justify-center"
+      aria-hidden="true"
+    >
+      <Sparkle class="draw-star size-5" :stroke-width="1.4" />
 
-      <span class="draw-burst" @animationend="handleAnimationEnd">
+      <span
+        class="draw-burst pointer-events-none absolute inset-0"
+        @animationend="handleAnimationEnd"
+      >
         <i
           v-for="(ray, index) in burstRays"
           :key="index"
+          class="absolute left-1/2 top-1/2 size-0.75 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0"
           :class="{ 'is-star': ray.star }"
           :style="{ '--x': ray.x, '--y': ray.y }"
         />
       </span>
     </span>
 
-    <span class="draw-label">開始抽牌</span>
+    <span class="draw-label relative z-2 mr-[-0.16em]">
+      {{ label }}
+    </span>
   </Button>
 </template>
 
 <style scoped>
 .draw-button {
-  position: relative;
-  isolation: isolate;
-  height: 48px;
-  min-width: 11.5rem;
-  padding: 0 1.55rem 0 2.7rem;
-  overflow: hidden;
-  border: 1px solid rgb(231 195 118 / 0.65);
-  border-radius: 9999px;
-  color: var(--tarot-gold-light);
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  background: linear-gradient(110deg, rgb(74 42 85 / 0.95), rgb(43 25 55 / 0.96));
+  border-color: color-mix(in srgb, var(--tarot-gold, #d9b56d) 48%, transparent);
+
+  color: var(--tarot-gold-bright, #f4e3b2);
+
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.015)),
+    rgb(29 20 34 / 0.72);
+
+  backdrop-filter: blur(12px);
+
   box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.08),
-    0 8px 30px rgb(0 0 0 / 0.3),
-    0 0 20px rgb(211 168 92 / 0.08);
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    border-color 0.25s ease,
-    color 0.25s ease;
+    inset 0 1px rgb(255 255 255 / 0.06),
+    inset 0 0 20px rgb(217 181 109 / 0.025),
+    0 10px 30px rgb(0 0 0 / 0.22);
+}
+
+.draw-button::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgb(217 181 109 / 0.09),
+    transparent 55%
+  );
+  pointer-events: none;
 }
 
 .draw-button::after {
@@ -97,25 +120,33 @@ function handleAnimationEnd(event: AnimationEvent) {
   inset: 0;
   z-index: 1;
   background: linear-gradient(
-    100deg,
-    transparent 34%,
-    rgb(244 227 178 / 0.16) 50%,
-    transparent 66%
+    105deg,
+    transparent 30%,
+    rgb(246 231 190 / 0.14) 48%,
+    rgb(255 255 255 / 0.12) 52%,
+    transparent 70%
   );
   pointer-events: none;
-  transform: translateX(-130%);
+  transform: translateX(-140%);
 }
 
 .draw-button:hover,
 .draw-button:focus-visible {
-  border-color: rgb(244 227 178 / 0.9);
-  color: var(--tarot-gold-bright);
-  background: linear-gradient(110deg, rgb(86 48 98 / 0.98), rgb(48 28 62 / 0.98));
+  color: #fff1c9;
+
+  border-color: color-mix(in srgb, var(--tarot-gold, #d9b56d) 76%, transparent);
+
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.065), rgb(217 181 109 / 0.025)),
+    rgb(34 23 39 / 0.82);
+
   transform: translateY(-2px);
+
   box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.1),
-    0 10px 35px rgb(0 0 0 / 0.35),
-    0 0 28px rgb(218 177 95 / 0.22);
+    inset 0 1px rgb(255 255 255 / 0.09),
+    inset 0 0 24px rgb(217 181 109 / 0.045),
+    0 12px 34px rgb(0 0 0 / 0.28),
+    0 0 18px rgb(217 181 109 / 0.08);
 }
 
 .draw-button:hover::after,
@@ -129,50 +160,22 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .draw-button:active {
   transform: translateY(0) scale(0.98);
-}
 
-.draw-button-icon {
-  position: absolute;
-  top: 50%;
-  left: 1.05rem;
-  z-index: 2;
-  display: inline-flex;
-  width: 1.3rem;
-  height: 1.3rem;
-  align-items: center;
-  justify-content: center;
-  transform: translateY(-50%);
+  background:
+    linear-gradient(180deg, rgb(217 181 109 / 0.06), rgb(255 255 255 / 0.015)),
+    rgb(30 20 35 / 0.88);
 }
 
 .draw-star {
-  width: 1.3rem;
-  height: 1.3rem;
-  fill: var(--tarot-gold-bright);
-  color: var(--tarot-gold-bright);
-}
-
-.draw-label {
-  position: relative;
-  z-index: 2;
-  margin-right: -0.22em;
-}
-
-.draw-burst {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+  fill: rgb(217 181 109 / 0.13);
+  color: var(--tarot-gold-light, #e7c376);
+  filter: drop-shadow(0 0 5px rgb(217 181 109 / 0.16));
 }
 
 .draw-burst i {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 3px;
-  height: 3px;
   margin: -1.5px 0 0 -1.5px;
-  border-radius: 50%;
-  background: var(--tarot-gold-bright);
-  opacity: 0;
+  background: #f6e7be;
+  box-shadow: 0 0 6px rgb(246 231 190 / 0.5);
 }
 
 .draw-burst i.is-star {
@@ -206,11 +209,11 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 @keyframes gold-sweep {
   from {
-    transform: translateX(-130%);
+    transform: translateX(-140%);
   }
 
   to {
-    transform: translateX(130%);
+    transform: translateX(140%);
   }
 }
 
@@ -258,13 +261,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   100% {
     opacity: 0;
     transform: translate(var(--x), var(--y)) scale(1) rotate(36deg);
-  }
-}
-
-@media (max-width: 760px) {
-  .draw-button {
-    width: 100%;
-    min-width: 0;
   }
 }
 

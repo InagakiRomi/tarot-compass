@@ -14,6 +14,9 @@ const props = defineProps<{
   min: number;
   max: number;
   disabled?: boolean;
+  canCopy?: boolean;
+  /** 畫面上這一組牌的張數，跟 stepper 分開，避免數字和牌對不上 */
+  spreadCount: number;
 }>();
 
 const skipMotion = defineModel<boolean>("skipMotion", { required: true });
@@ -152,88 +155,145 @@ function onDrawClick() {
 </script>
 
 <template>
-  <div class="draw-controls">
-    <DeckTypeToggle v-model="deckType" :disabled="disabled" />
+  <div class="draw-stage">
+    <div class="stage-settings">
+      <DeckTypeToggle v-model="deckType" :disabled="disabled" />
 
-    <span class="draw-count-label" id="draw-count-label">抽牌數量</span>
-
-    <div class="draw-dock">
-      <DrawCountInput
-        v-model="rawCount"
-        :min="min"
-        :max="max"
-        aria-labelledby="draw-count-label"
-        @blur="onCountBlur"
-        @decrease="decreaseCount"
-        @increase="increaseCount"
-      />
-
-      <span class="draw-dock-rule" aria-hidden="true" />
-
-      <div ref="drawActionRef" class="draw-action">
-        <DrawButton @click="onDrawClick" />
-      </div>
+      <label class="skip-motion" :class="{ 'is-disabled': disabled }">
+        <span class="skip-motion-label">跳過動畫</span>
+        <SkipMotionSwitch v-model="skipMotion" :disabled="disabled" />
+      </label>
     </div>
 
-    <label class="skip-motion" :class="{ 'is-disabled': disabled }">
-      <span class="skip-motion-label">跳過動畫</span>
-      <SkipMotionSwitch v-model="skipMotion" :disabled="disabled" />
-    </label>
+    <div class="stage-header">
+      <p class="stage-heading">{{ spreadCount }} 張</p>
 
-    <button type="button" class="copy-result" @click="emit('copy')">
-      <Copy class="copy-result-icon" :stroke-width="1.6" aria-hidden="true" />
-      複製結果
-    </button>
+      <button
+        v-if="canCopy"
+        type="button"
+        class="copy-result"
+        @click="emit('copy')"
+      >
+        <Copy class="copy-result-icon" :stroke-width="1.6" aria-hidden="true" />
+        複製牌面
+      </button>
+    </div>
+
+    <div class="stage-spread">
+      <slot />
+    </div>
+
+    <div class="stage-actions">
+      <div class="count-field">
+        <span class="count-label" id="draw-count-label">抽牌數量</span>
+        <div class="count-stepper">
+          <DrawCountInput
+            v-model="rawCount"
+            :min="min"
+            :max="max"
+            aria-labelledby="draw-count-label"
+            @blur="onCountBlur"
+            @decrease="decreaseCount"
+            @increase="increaseCount"
+          />
+        </div>
+      </div>
+
+      <div ref="drawActionRef" class="draw-action">
+        <DrawButton label="抽牌" @click="onDrawClick" />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.draw-controls {
+.draw-stage {
+  position: relative;
+  z-index: 2;
   display: flex;
   width: 100%;
+  min-width: 0;
   flex-direction: column;
+}
+
+.stage-settings {
+  display: flex;
+  width: 100%;
   align-items: center;
-  margin-block: 0 0.15rem;
-  gap: 0.7rem;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
 }
 
-.draw-count-label {
-  color: #d5cbe4;
-  font-size: 0.72rem;
-  letter-spacing: 0.32em;
-}
-
-.draw-dock {
+.stage-header {
   display: flex;
   align-items: center;
-  padding: 0.28rem 0.28rem 0.28rem 0.2rem;
-  border: 1px solid rgb(210 174 102 / 0.26);
-  border-radius: 999px;
-  background: rgb(12 6 20 / 0.5);
-  box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.04),
-    0 18px 40px rgb(0 0 0 / 0.24);
-  backdrop-filter: blur(12px);
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  min-height: 2rem;
+  margin-top: 1.35rem;
 }
 
-.draw-dock-rule {
-  width: 1px;
-  height: 1.35rem;
-  flex: 0 0 auto;
-  margin-inline: 0.2rem 0.45rem;
-  background: rgb(143 115 70 / 0.55);
+.stage-heading {
+  margin: 0;
+  color: rgb(228 218 242 / 0.9);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+}
+
+.stage-spread {
+  width: 100%;
+  min-width: 0;
+  margin-top: 1.15rem;
+}
+
+.stage-actions {
+  display: flex;
+  width: min(720px, 100%);
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-inline: auto;
+  margin-top: 56px;
+  gap: 1.5rem;
+}
+
+.count-field {
+  display: flex;
+  width: min(20rem, 48%);
+  min-width: 13.75rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.38rem;
+}
+
+.count-label {
+  color: rgb(228 218 242 / 0.9);
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.08em;
+}
+
+.count-stepper {
+  width: 100%;
+  border: 1px solid rgb(210 174 102 / 0.28);
+  border-radius: 14px;
+  background: rgb(16 8 27 / 0.38);
 }
 
 .draw-action {
   display: flex;
+  flex: 0 0 auto;
 }
 
 .skip-motion {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
-  margin-top: 0.15rem;
+  margin-left: auto;
   cursor: pointer;
-  gap: 0.55rem;
+  gap: 8px;
   user-select: none;
 }
 
@@ -243,23 +303,26 @@ function onDrawClick() {
 }
 
 .skip-motion-label {
-  color: #d5cbe4;
-  font-size: 0.72rem;
-  letter-spacing: 0.28em;
+  color: rgb(228 218 242 / 0.92);
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
 }
 
 .copy-result {
   display: inline-flex;
   align-items: center;
-  height: 2.15rem;
-  margin-top: 0.15rem;
-  padding: 0 1.05rem;
-  border: 1px solid rgb(210 174 102 / 0.38);
+  height: 2rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgb(210 174 102 / 0.32);
   border-radius: 999px;
-  color: #e7c376;
-  font-size: 0.82rem;
-  letter-spacing: 0.22em;
-  background: rgb(12 6 20 / 0.42);
+  color: rgb(231 195 118 / 0.92);
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  background: transparent;
   cursor: pointer;
   transition:
     border-color 0.2s ease,
@@ -269,35 +332,44 @@ function onDrawClick() {
 
 .copy-result:hover,
 .copy-result:focus-visible {
-  border-color: rgb(231 195 118 / 0.8);
+  border-color: rgb(231 195 118 / 0.72);
   color: #f4e3b2;
-  background: rgb(28 16 42 / 0.72);
+  background: rgb(22 12 36 / 0.45);
   outline: none;
 }
 
 .copy-result-icon {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 15px;
+  height: 15px;
   margin-right: 0.4rem;
+  flex: 0 0 auto;
 }
 
-@media (max-width: 760px) {
-  .draw-controls {
-    width: min(100%, 22rem);
+@media (max-width: 720px) {
+  .stage-settings {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.55rem;
   }
 
-  .draw-dock {
+  .stage-header {
+    margin-top: 1rem;
+  }
+
+  .stage-spread {
+    margin-top: 1rem;
+  }
+
+  .stage-actions {
     flex-direction: column;
-    width: 100%;
-    padding: 0.4rem;
-    border-radius: 1.4rem;
-    gap: 0.2rem;
+    align-items: stretch;
+    margin-top: 48px;
+    gap: 0.9rem;
   }
 
-  .draw-dock-rule {
-    width: 72%;
-    height: 1px;
-    margin: 0.2rem 0 0.15rem;
+  .count-field {
+    width: 100%;
+    min-width: 0;
   }
 
   .draw-action {
