@@ -15,8 +15,6 @@ const props = defineProps<{
   max: number;
   disabled?: boolean;
   canCopy?: boolean;
-  /** 畫面上這一組牌的張數，跟 stepper 分開，避免數字和牌對不上 */
-  spreadCount: number;
 }>();
 
 const skipMotion = defineModel<boolean>("skipMotion", { required: true });
@@ -165,9 +163,7 @@ function onDrawClick() {
       </label>
     </div>
 
-    <div class="stage-header">
-      <p class="stage-heading">{{ spreadCount }} 張</p>
-
+    <div v-if="canCopy" class="stage-header">
       <button
         v-if="canCopy"
         type="button"
@@ -227,19 +223,10 @@ function onDrawClick() {
 .stage-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.75rem 1.25rem;
   min-height: 2rem;
   margin-top: 1.35rem;
-}
-
-.stage-heading {
-  margin: 0;
-  color: rgb(228 218 242 / 0.9);
-  font-size: var(--font-size-body);
-  font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: 0.04em;
 }
 
 .stage-spread {

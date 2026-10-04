@@ -500,6 +500,12 @@ onUnmounted(() => {
   <main class="tarot-page">
     <OracleBackdrop>
       <div class="tarot-layout">
+        <header class="tarot-heading">
+          <p class="tarot-heading-en">Tarot Compass</p>
+          <h1 class="tarot-heading-title">塔羅羅盤</h1>
+          <p class="tarot-heading-note">在心中默念你想知道的事，準備好後按下抽牌</p>
+        </header>
+
         <PageOrnament />
 
         <section
@@ -519,7 +525,6 @@ onUnmounted(() => {
             :max="maxDrawCount"
             :disabled="isRitual"
             :can-copy="hasReading"
-            :spread-count="cards.length"
             @draw="beginRitual"
             @copy="copyResult"
           >
@@ -625,6 +630,53 @@ onUnmounted(() => {
   align-items: center;
   margin-block: 0;
   gap: 0.55rem;
+}
+
+.tarot-heading {
+  display: flex;
+  width: 100%;
+  max-width: 36rem;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin-bottom: 0.15rem;
+  text-align: center;
+}
+
+.tarot-heading-en {
+  margin: 0;
+  color: color-mix(in srgb, var(--tarot-gold) 72%, transparent);
+  font-size: calc(0.72rem + 2px);
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  text-transform: uppercase;
+}
+
+.tarot-heading-title {
+  margin: 0;
+  background: linear-gradient(180deg, var(--tarot-gold-bright) 0%, var(--tarot-gold) 58%, var(--tarot-gold-dim) 100%);
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(calc(1.85rem + 2px), calc(3.4vw + 2px), calc(2.45rem + 2px));
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  line-height: 1.2;
+  text-indent: 0.28em;
+}
+
+.tarot-heading-note {
+  width: min(28rem, calc(100vw - 4.5rem));
+  max-width: 100%;
+  min-width: 0;
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: calc(0.92rem + 2px);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  text-wrap: balance;
 }
 
 .tarot-board {
