@@ -380,18 +380,54 @@ function measureOffsets(list: HTMLElement) {
   }));
 }
 
-/** 牌陣比視窗高時，把幾何中心捲進畫面，牌堆才看得到 */
+function visibleHeight() {
+  return window.visualViewport?.height ?? window.innerHeight;
+}
+
+/** 手機與平板的捲動根節點不一定是 window，兩邊都寫一次 */
+function scrollPageTo(top: number) {
+  const y = Math.max(0, top);
+  const root = document.scrollingElement ?? document.documentElement;
+
+  root.scrollTop = y;
+  document.documentElement.scrollTop = y;
+  document.body.scrollTop = y;
+  window.scrollTo(0, y);
+}
+
+/** 牌陣比可見畫面高時，把幾何中心捲進畫面，牌堆才看得到 */
 function bringSpreadIntoView(list: HTMLElement) {
   const rect = list.getBoundingClientRect();
-  const view = window.innerHeight;
+  const view = visibleHeight();
   const fullyVisible = rect.height <= view * 0.92 && rect.top >= 8 && rect.bottom <= view - 8;
 
   if (fullyVisible) {
     return;
   }
 
-  const top = window.scrollY + rect.top + rect.height / 2 - view / 2;
-  window.scrollTo(0, Math.max(0, top));
+  const root = document.scrollingElement ?? document.documentElement;
+  const top = root.scrollTop + rect.top + rect.height / 2 - view / 2;
+  scrollPageTo(top);
+}
+
+function scheduleBringSpreadIntoView(token: number) {
+  const run = () => {
+    if (!alive || token !== drawId.value) {
+      return;
+    }
+
+    const list = listRef.value;
+
+    if (list) {
+      bringSpreadIntoView(list);
+    }
+  };
+
+  run();
+  requestAnimationFrame(() => {
+    run();
+    later(run, 120);
+  });
 }
 
 function onCardAnimationEnd(event: AnimationEvent, index: number) {
@@ -431,8 +467,12 @@ async function startDeal(count: number, reducedMotion: boolean) {
   if (reducedMotion) {
     faceDown.value = false;
     drawId.value += 1;
+    const token = drawId.value;
     cards.value = commitDraw(drawn);
     finishRitual();
+    await nextTick();
+    await nextFrame();
+    scheduleBringSpreadIntoView(token);
     return;
   }
 
@@ -452,7 +492,7 @@ async function startDeal(count: number, reducedMotion: boolean) {
   const list = listRef.value;
 
   if (list) {
-    bringSpreadIntoView(list);
+    scheduleBringSpreadIntoView(token);
     offsets.value = measureOffsets(list);
   }
 
@@ -664,12 +704,11 @@ onUnmounted(() => {
   isolation: isolate;
   display: flex;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   min-width: 0;
   min-height: 100svh;
   flex-direction: column;
   align-items: stretch;
-  overflow-x: clip;
   color: var(--tarot-text);
   background:
     radial-gradient(ellipse at 50% 38%, rgb(90 48 140 / 0.07), transparent 46%),
