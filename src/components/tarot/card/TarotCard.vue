@@ -114,6 +114,8 @@ function onPointerLeave() {
               :alt="card.cardName"
               class="card-image"
               :class="{ 'is-reversed': card.reversed }"
+              loading="lazy"
+              decoding="async"
               draggable="false"
             />
           </div>
@@ -149,10 +151,7 @@ function onPointerLeave() {
   border-radius: 0.55rem;
   transform: translateY(0) scale(1) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transform-origin: center center;
-  filter: drop-shadow(0 14px 28px rgb(0 0 0 / 0.28));
-  transition:
-    transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 0.4s ease;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .card-tilt::before {
@@ -173,9 +172,6 @@ function onPointerLeave() {
 
 .card-tilt.is-hovered {
   transform: translateY(-8px) scale(1.025) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  filter:
-    drop-shadow(0 18px 36px rgb(0 0 0 / 0.38))
-    drop-shadow(0 0 26px rgb(135 83 181 / 0.28));
 }
 
 .card-tilt.is-hovered::before {
@@ -186,7 +182,16 @@ function onPointerLeave() {
   aspect-ratio: 25 / 44;
   width: 100%;
   min-width: 0;
+  border-radius: 0.55rem;
   perspective: 1200px;
+  box-shadow: 0 14px 28px rgb(0 0 0 / 0.28);
+  transition: box-shadow 0.4s ease;
+}
+
+.card-tilt.is-hovered .card-scene {
+  box-shadow:
+    0 18px 36px rgb(0 0 0 / 0.38),
+    0 0 26px rgb(135 83 181 / 0.28);
 }
 
 .card-flip {

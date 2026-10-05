@@ -60,6 +60,7 @@ const spreadLayout = ref<SpreadLayout>(
 );
 const offsets = ref<{ x: number; y: number }[]>([]);
 const settled = ref<boolean[]>([]);
+const entering = ref<boolean[]>([]);
 
 let timers: number[] = [];
 let resizeObserver: ResizeObserver | undefined;
@@ -130,12 +131,20 @@ function preferredColumns(count: number, viewport: number) {
     return 1;
   }
 
+  if (viewport < 760 && count >= 13) {
+    return Math.min(3, count);
+  }
+
   if (viewport < 520) {
     return Math.min(2, count);
   }
 
   if (viewport < 720) {
     return count <= 2 ? count : 3;
+  }
+
+  if (viewport < 760) {
+    return Math.min(3, count);
   }
 
   if (viewport < 1100) {
@@ -173,7 +182,16 @@ function computeSpread(count: number, rawWidth: number, viewport: number): Sprea
     ideal = Math.min(ideal, max);
   }
 
+  const phoneSpread = viewport < 760 && safeCount >= 13;
+
+  if (phoneSpread) {
+    min = 84;
+    max = Math.min(max, 128);
+    ideal = Math.min(ideal, max);
+  }
+
   let cols = Math.min(preferredColumns(safeCount, viewport), safeCount);
+  const sizeFloor = phoneSpread ? 84 : 88;
 
   const used = (columns: number, size: number) =>
     columns * size + Math.max(0, columns - 1) * gap;
@@ -186,17 +204,17 @@ function computeSpread(count: number, rawWidth: number, viewport: number): Sprea
     } else {
       cols = Math.max(1, Math.min(safeCount, Math.floor((available + gap) / (min + gap))));
       ideal = Math.floor((available - Math.max(0, cols - 1) * gap) / cols);
-      ideal = Math.min(max, Math.max(88, ideal));
+      ideal = Math.min(max, Math.max(sizeFloor, ideal));
     }
   }
 
-  ideal = Math.min(max, Math.max(88, ideal));
+  ideal = Math.min(max, Math.max(sizeFloor, ideal));
 
   if (used(cols, ideal) > available && cols > 1) {
     cols -= 1;
     ideal = Math.min(
       max,
-      Math.max(88, Math.floor((available - Math.max(0, cols - 1) * gap) / cols)),
+      Math.max(sizeFloor, Math.floor((available - Math.max(0, cols - 1) * gap) / cols)),
     );
   }
 
@@ -310,7 +328,45 @@ function finishRitual() {
   isRitual.value = false;
   offsets.value = [];
   settled.value = [];
+  entering.value = [];
   applyLayout();
+}
+
+function scheduleEntering(count: number, token: number) {
+  const groups = new Map<number, number[]>();
+
+  for (let index = 0; index < count; index += 1) {
+    const delay = index * STAGGER_MS;
+    const bucket = groups.get(delay);
+
+    if (bucket) {
+      bucket.push(index);
+    } else {
+      groups.set(delay, [index]);
+    }
+  }
+
+  for (const [delay, indices] of groups) {
+    const apply = () => {
+      if (!alive || token !== drawId.value) {
+        return;
+      }
+
+      const next = entering.value.slice();
+
+      for (const index of indices) {
+        next[index] = true;
+      }
+
+      entering.value = next;
+    };
+
+    if (delay === 0) {
+      apply();
+    } else {
+      later(apply, delay);
+    }
+  }
 }
 
 function measureOffsets(list: HTMLElement) {
@@ -347,6 +403,12 @@ function onCardAnimationEnd(event: AnimationEvent, index: number) {
     return;
   }
 
+  if (entering.value[index]) {
+    const nextEntering = entering.value.slice();
+    nextEntering[index] = false;
+    entering.value = nextEntering;
+  }
+
   if (settled.value[index]) {
     return;
   }
@@ -362,6 +424,7 @@ async function startDeal(count: number, reducedMotion: boolean) {
   clearTimers();
   offsets.value = [];
   settled.value = [];
+  entering.value = [];
   useDealDelay.value = !reducedMotion;
   spreadLayout.value = computeSpread(count, listWidth(), viewportWidth());
 
@@ -376,12 +439,13 @@ async function startDeal(count: number, reducedMotion: boolean) {
   faceDown.value = true;
   dealPhase.value = "pending";
   drawId.value += 1;
+  const token = drawId.value;
   cards.value = commitDraw(drawn);
 
   await nextTick();
   await nextFrame();
 
-  if (!alive) {
+  if (!alive || token !== drawId.value) {
     return;
   }
 
@@ -393,17 +457,20 @@ async function startDeal(count: number, reducedMotion: boolean) {
   }
 
   dealPhase.value = "gathering";
+  entering.value = Array.from({ length: count }, () => true);
 
   later(() => {
-    if (!alive) {
+    if (!alive || token !== drawId.value) {
       return;
     }
 
     faceDown.value = false;
     dealPhase.value = "flying";
+    entering.value = Array.from({ length: count }, () => false);
+    scheduleEntering(count, token);
 
     later(() => {
-      if (!alive) {
+      if (!alive || token !== drawId.value) {
         return;
       }
 
@@ -551,6 +618,7 @@ onUnmounted(() => {
                     'is-gathering': dealPhase === 'gathering',
                     'is-flying': dealPhase === 'flying' && !settled[entry.index],
                     'is-settled': dealPhase === 'flying' && settled[entry.index],
+                    'is-entering': entering[entry.index],
                   }"
                   :style="cardMotionStyle(entry.index)"
                   @animationend="onCardAnimationEnd($event, entry.index)"
@@ -760,6 +828,7 @@ onUnmounted(() => {
 
   position: relative;
   z-index: 1;
+  will-change: auto;
   display: flex;
   width: var(--card-size, 158px);
   max-width: 100%;
@@ -789,16 +858,20 @@ onUnmounted(() => {
   animation-delay: var(--stagger, 0ms);
 }
 
+.tarot-card.is-entering {
+  will-change: transform, opacity;
+}
+
 .tarot-card.is-settled {
   z-index: 1;
   opacity: 1;
   animation: none;
   transform: rotate(var(--rest-tilt));
+  will-change: auto;
 }
 
 .tarot-board.is-dealing .tarot-card {
   pointer-events: none;
-  will-change: transform, opacity;
 }
 
 @keyframes deal-gather {
