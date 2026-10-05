@@ -14,6 +14,8 @@ import { Toaster } from "@/components/ui/sonner";
     position="top-center"
     rich-colors
     :duration="3200"
+    :offset="{ top: '4.6rem' }"
+    :mobile-offset="{ top: '4.6rem' }"
     :style="{
       '--normal-bg': 'rgba(27, 17, 43, 0.94)',
       '--normal-text': '#f1ebfa',

@@ -16,7 +16,11 @@ import { toast } from "vue-sonner";
 import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
 import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
 import HistoryRecordTable from "@/components/tarot/history/HistoryRecordTable.vue";
-import { MAX_HISTORY_RECORDS, useHistoryStore, type DrawHistoryRecord } from "@/stores/history";
+import {
+  MAX_HISTORY_RECORDS,
+  useHistoryStore,
+  type DrawHistoryRecord,
+} from "@/stores/history";
 
 const historyStore = useHistoryStore();
 const { records } = storeToRefs(historyStore);
@@ -53,7 +57,9 @@ function confirmClear() {
         <header class="history-heading">
           <p class="history-heading-en">History</p>
           <h1 class="history-heading-title">歷史紀錄</h1>
-          <p class="history-heading-note">最近 {{ MAX_HISTORY_RECORDS }} 次抽牌會留在這台裝置上</p>
+          <p class="history-heading-note">
+            最近{{ MAX_HISTORY_RECORDS }}次抽牌會留在這台裝置上
+          </p>
         </header>
         <PageOrnament />
 
@@ -74,7 +80,7 @@ function confirmClear() {
                     清除紀錄
                   </AlertDialogTitle>
                   <AlertDialogDescription class="history-confirm-note">
-                    刪除後無法復原，這台裝置上的抽牌紀錄都會消失。
+                    刪除後無法復原，這台裝置上的抽牌紀錄都會消失
                   </AlertDialogDescription>
                   <div class="history-confirm-actions">
                     <AlertDialogCancel class="history-confirm-cancel">
@@ -232,7 +238,7 @@ function confirmClear() {
   top: 50%;
   left: 50%;
   display: flex;
-  width: min(22rem, calc(100vw - 2rem));
+  width: min(28rem, calc(100vw - 2rem));
   flex-direction: column;
   gap: 0.85rem;
   padding: 1.35rem 1.25rem 1.2rem;
@@ -310,7 +316,11 @@ function confirmClear() {
 .history-confirm-ok {
   border: 1px solid rgb(231 195 118 / 0.72);
   color: rgb(28 16 8);
-  background: linear-gradient(180deg, var(--tarot-gold-bright), var(--tarot-gold));
+  background: linear-gradient(
+    180deg,
+    var(--tarot-gold-bright),
+    var(--tarot-gold)
+  );
 }
 
 .history-confirm-ok:hover,

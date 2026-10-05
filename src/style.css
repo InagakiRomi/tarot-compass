@@ -99,3 +99,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+[data-sonner-toast][data-styled="true"] {
+  font-size: var(--font-size-body);
+}

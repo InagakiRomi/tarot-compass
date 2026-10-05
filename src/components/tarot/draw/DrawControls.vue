@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { nextTick, ref, watch } from "vue";
 import { Copy } from "@lucide/vue";
 import { toast } from "vue-sonner";
 import DeckTypeToggle, {
@@ -28,16 +28,35 @@ const emit = defineEmits<{
 
 const rawCount = ref(String(props.modelValue));
 const drawActionRef = ref<HTMLElement | null>(null);
+const countControlRef = ref<HTMLElement | null>(null);
 
 /** 同一個點擊若先 blur 再按抽牌，避免修正後又立刻開抽 */
 let rejectedAt = 0;
 
 watch(
   () => props.modelValue,
-  (value) => {
+  async (value) => {
     rawCount.value = String(value);
+    await nextTick();
+    keepCountControlInView();
   },
 );
+
+function keepCountControlInView() {
+  const el = countControlRef.value;
+  if (!el) return;
+
+  const rect = el.getBoundingClientRect();
+  const safeTop = 120;
+  const safeBottom = window.innerHeight - 160;
+
+  if (rect.top < safeTop || rect.bottom > safeBottom) {
+    el.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+}
 
 function commit(value: number) {
   emit("update:modelValue", value);
@@ -180,7 +199,7 @@ function onDrawClick() {
     </div>
 
     <div class="stage-actions">
-      <div class="count-field">
+      <div ref="countControlRef" class="count-field">
         <span class="count-label" id="draw-count-label">抽牌數量</span>
         <div class="count-stepper">
           <DrawCountInput
