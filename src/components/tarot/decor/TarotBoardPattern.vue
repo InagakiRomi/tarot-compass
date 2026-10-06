@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Sparkle } from "@lucide/vue";
 
+withDefaults(defineProps<{ performanceMode?: boolean }>(), {
+  performanceMode: false,
+});
+
 const corners = ["tl", "tr", "bl", "br"] as const;
 const ticks = Array.from({ length: 24 }, (_, index) => index * 15);
 const orbitPoints = [0, 90, 180, 270] as const;
@@ -15,7 +19,7 @@ const orbitPoints = [0, 90, 180, 270] as const;
       :class="`board-corner-${corner}`"
     />
 
-    <div class="celestial-circle">
+    <div v-if="!performanceMode" class="celestial-circle">
       <div class="circle-glow" />
 
       <div class="outer-orbit">
@@ -322,6 +326,19 @@ const orbitPoints = [0, 90, 180, 270] as const;
   50% {
     opacity: 0.9;
     transform: scale(1.12);
+  }
+}
+
+@media (max-width: 760px), (hover: none), (pointer: coarse) {
+  .outer-orbit,
+  .core-halo {
+    animation: none;
+  }
+
+  .circle-glow,
+  .core-halo,
+  .core-star {
+    filter: none;
   }
 }
 

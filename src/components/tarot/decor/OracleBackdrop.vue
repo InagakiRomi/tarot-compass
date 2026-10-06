@@ -1,6 +1,6 @@
 <template>
   <div class="mystic-background">
-    <div class="mystic-scenery" aria-hidden="true">
+    <div v-if="!performanceMode" class="mystic-scenery" aria-hidden="true">
       <div class="aurora aurora-a" />
       <div class="aurora aurora-b" />
 
@@ -73,6 +73,10 @@
 
 <script setup lang="ts">
 import { orbits, stars } from "@/components/tarot/decor/oracleBackdrop.config";
+
+withDefaults(defineProps<{ performanceMode?: boolean }>(), {
+  performanceMode: false,
+});
 
 /**
  * 四角植物不互相鏡像：
@@ -364,6 +368,24 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 
   .mystic-frame {
     inset: 0.55rem;
+  }
+}
+
+@media (max-width: 760px), (hover: none), (pointer: coarse) {
+  .aurora {
+    filter: none;
+    animation: none;
+  }
+
+  .mystic-orbit-a,
+  .mystic-orbit-f,
+  .mystic-star-primary.is-breathing,
+  .mystic-star-secondary.is-breathing {
+    animation: none;
+  }
+
+  .mystic-star-primary {
+    filter: none;
   }
 }
 

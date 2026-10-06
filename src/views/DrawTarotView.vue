@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   useClipboard,
+  useMediaQuery,
   usePreferredReducedMotion,
   useResizeObserver,
 } from "@vueuse/core";
@@ -34,6 +35,10 @@ const FLY_MS = 700;
 /** 每張牌出發的間隔 */
 const STAGGER_MS = 62;
 
+/** 超過此數量便停用逐張動畫，避免同時建立過多 GPU 圖層 */
+const DESKTOP_MOTION_LIMIT = 24;
+const CONSTRAINED_MOTION_LIMIT = 10;
+
 type DealPhase = "idle" | "pending" | "gathering" | "flying";
 
 type SpreadLayout = {
@@ -66,14 +71,23 @@ const spreadLayout = ref<SpreadLayout>(
   computeSpread(cards.value.length, containerWidth.value, viewportWidth()),
 );
 const offsets = ref<{ x: number; y: number }[]>([]);
-const settled = ref<boolean[]>([]);
-const entering = ref<boolean[]>([]);
+const visibleRows = ref<Set<number>>(new Set());
 
 let timers: number[] = [];
+let rowObserver: IntersectionObserver | undefined;
 let alive = true;
 
 const isDealing = computed(() => dealPhase.value !== "idle");
 const preferredReducedMotion = usePreferredReducedMotion();
+const constrainedDevice = useMediaQuery(
+  "(max-width: 760px), (hover: none), (pointer: coarse)",
+);
+const supportsHover = useMediaQuery("(hover: hover) and (pointer: fine)");
+const isDenseSpread = computed(
+  () =>
+    cards.value.length >
+    (constrainedDevice.value ? CONSTRAINED_MOTION_LIMIT : DESKTOP_MOTION_LIMIT),
+);
 
 const hasReading = computed(
   () => !isRitual.value && cards.value.some((card) => card !== null),
@@ -98,6 +112,69 @@ const cardRows = computed(() => {
 
   return rows;
 });
+
+/**
+ * 大牌陣只掛載視窗附近的牌列，避免 78 張牌同時建立元件、
+ * 解碼圖片及占用 GPU 記憶體。列外框會保留，因此捲動高度不變。
+ */
+function observeVisibleRows() {
+  rowObserver?.disconnect();
+  rowObserver = undefined;
+
+  if (!isDenseSpread.value) {
+    visibleRows.value = new Set();
+    return;
+  }
+
+  const rows = listRef.value?.querySelectorAll<HTMLElement>(".tarot-card-row");
+
+  if (!rows) {
+    return;
+  }
+
+  if (!("IntersectionObserver" in window)) {
+    visibleRows.value = new Set(Array.from(rows, (_, index) => index));
+    return;
+  }
+
+  const validRows = new Set(Array.from(rows, (_, index) => index));
+  visibleRows.value = new Set(
+    [...visibleRows.value].filter((index) => validRows.has(index)),
+  );
+
+  rowObserver = new IntersectionObserver(
+    (entries) => {
+      const next = new Set(visibleRows.value);
+
+      for (const entry of entries) {
+        const rowIndex = Number((entry.target as HTMLElement).dataset.rowIndex);
+
+        if (!Number.isInteger(rowIndex)) {
+          continue;
+        }
+
+        if (entry.isIntersecting) {
+          next.add(rowIndex);
+        } else {
+          next.delete(rowIndex);
+        }
+      }
+
+      visibleRows.value = next;
+    },
+    { rootMargin: "720px 0px" },
+  );
+
+  rows.forEach((row) => rowObserver?.observe(row));
+}
+
+watch(
+  [isDenseSpread, () => cardRows.value.length, () => spreadLayout.value.cols],
+  () => {
+    void nextTick(observeVisibleRows);
+  },
+  { flush: "post" },
+);
 
 function viewportWidth() {
   return typeof window === "undefined" ? 1280 : window.innerWidth;
@@ -334,46 +411,7 @@ function finishRitual() {
   dealPhase.value = "idle";
   isRitual.value = false;
   offsets.value = [];
-  settled.value = [];
-  entering.value = [];
   applyLayout();
-}
-
-function scheduleEntering(count: number, token: number) {
-  const groups = new Map<number, number[]>();
-
-  for (let index = 0; index < count; index += 1) {
-    const delay = index * STAGGER_MS;
-    const bucket = groups.get(delay);
-
-    if (bucket) {
-      bucket.push(index);
-    } else {
-      groups.set(delay, [index]);
-    }
-  }
-
-  for (const [delay, indices] of groups) {
-    const apply = () => {
-      if (!alive || token !== drawId.value) {
-        return;
-      }
-
-      const next = entering.value.slice();
-
-      for (const index of indices) {
-        next[index] = true;
-      }
-
-      entering.value = next;
-    };
-
-    if (delay === 0) {
-      apply();
-    } else {
-      later(apply, delay);
-    }
-  }
 }
 
 function measureOffsets(list: HTMLElement) {
@@ -437,41 +475,18 @@ function scheduleBringSpreadIntoView(token: number) {
   });
 }
 
-function onCardAnimationEnd(event: AnimationEvent, index: number) {
-  if (event.target !== event.currentTarget) {
-    return;
-  }
-
-  if (!event.animationName.includes("deal-fly")) {
-    return;
-  }
-
-  if (entering.value[index]) {
-    const nextEntering = entering.value.slice();
-    nextEntering[index] = false;
-    entering.value = nextEntering;
-  }
-
-  if (settled.value[index]) {
-    return;
-  }
-
-  const next = settled.value.slice();
-  next[index] = true;
-  settled.value = next;
-}
-
 async function startDeal(count: number, reducedMotion: boolean) {
   const drawn = draw(availableCards.value, count);
+  const useLightweightMotion =
+    count >
+    (constrainedDevice.value ? CONSTRAINED_MOTION_LIMIT : DESKTOP_MOTION_LIMIT);
 
   clearTimers();
   offsets.value = [];
-  settled.value = [];
-  entering.value = [];
-  useDealDelay.value = !reducedMotion;
+  useDealDelay.value = !reducedMotion && !useLightweightMotion;
   spreadLayout.value = computeSpread(count, listWidth(), viewportWidth());
 
-  if (reducedMotion) {
+  if (reducedMotion || useLightweightMotion) {
     faceDown.value = false;
     drawId.value += 1;
     const token = drawId.value;
@@ -504,7 +519,6 @@ async function startDeal(count: number, reducedMotion: boolean) {
   }
 
   dealPhase.value = "gathering";
-  entering.value = Array.from({ length: count }, () => true);
 
   later(() => {
     if (!alive || token !== drawId.value) {
@@ -513,8 +527,6 @@ async function startDeal(count: number, reducedMotion: boolean) {
 
     faceDown.value = false;
     dealPhase.value = "flying";
-    entering.value = Array.from({ length: count }, () => false);
-    scheduleEntering(count, token);
 
     later(() => {
       if (!alive || token !== drawId.value) {
@@ -595,17 +607,21 @@ useResizeObserver(listRef, () => {
   }
 });
 
-onMounted(applyLayout);
+onMounted(() => {
+  applyLayout();
+  observeVisibleRows();
+});
 
 onUnmounted(() => {
   alive = false;
   clearTimers();
+  rowObserver?.disconnect();
 });
 </script>
 
 <template>
-  <main class="tarot-page">
-    <OracleBackdrop>
+  <main class="tarot-page" :class="{ 'is-dense': isDenseSpread }">
+    <OracleBackdrop :performance-mode="isDenseSpread">
       <div class="tarot-layout">
         <header class="tarot-heading">
           <p class="tarot-heading-en">Tarot Compass</p>
@@ -617,12 +633,16 @@ onUnmounted(() => {
 
         <section
           class="tarot-board"
-          :class="{ 'is-ritual': isRitual, 'is-dealing': isDealing }"
+          :class="{
+            'is-ritual': isRitual,
+            'is-dealing': isDealing,
+            'is-dense': isDenseSpread,
+          }"
           aria-label="塔羅牌陣"
         >
           <div class="tarot-board-glow" aria-hidden="true" />
           <div class="tarot-board-glow tarot-board-glow-ritual" aria-hidden="true" />
-          <TarotBoardPattern />
+          <TarotBoardPattern :performance-mode="isDenseSpread" />
 
           <DrawControls
             v-model="drawCount"
@@ -638,6 +658,7 @@ onUnmounted(() => {
             <div
               ref="listRef"
               class="tarot-card-list"
+              :class="{ 'is-dense': isDenseSpread }"
               :style="gridStyle"
               :data-cols="spreadLayout.cols"
               :data-card-size="spreadLayout.cardSize"
@@ -645,29 +666,35 @@ onUnmounted(() => {
             >
               <div
                 v-for="(row, rowIndex) in cardRows"
-                :key="`${drawId}-row-${rowIndex}`"
+                :key="rowIndex"
                 class="tarot-card-row"
+                :data-row-index="rowIndex"
               >
                 <div
                   v-for="entry in row"
-                  :key="`${drawId}-${entry.index}`"
+                  :key="entry.index"
                   class="tarot-card"
                   :class="{
                     'is-pending': dealPhase === 'pending',
                     'is-gathering': dealPhase === 'gathering',
-                    'is-flying': dealPhase === 'flying' && !settled[entry.index],
-                    'is-settled': dealPhase === 'flying' && settled[entry.index],
-                    'is-entering': entering[entry.index],
+                    'is-flying': dealPhase === 'flying',
                   }"
                   :style="cardMotionStyle(entry.index)"
-                  @animationend="onCardAnimationEnd($event, entry.index)"
                 >
                   <TarotCard
+                    v-if="!isDenseSpread || visibleRows.has(rowIndex)"
                     :card="entry.card"
                     :face-down="faceDown"
                     :reveal-delay="revealDelayFor(entry.index)"
                     :skip-motion="skipMotion"
+                    :performance-mode="isDenseSpread"
+                    :reduced-motion="preferredReducedMotion === 'reduce'"
+                    :supports-hover="supportsHover"
                   />
+                  <div v-else class="tarot-card-placeholder" aria-hidden="true">
+                    <div class="tarot-card-placeholder-face" />
+                    <div class="tarot-card-placeholder-name" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -706,6 +733,10 @@ onUnmounted(() => {
   opacity: 0.028;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mix-blend-mode: soft-light;
+}
+
+.tarot-page.is-dense::after {
+  display: none;
 }
 
 .tarot-layout {
@@ -843,6 +874,31 @@ onUnmounted(() => {
   column-gap: var(--spread-gap, 26px);
 }
 
+.tarot-card-list.is-dense .tarot-card-row {
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}
+
+.tarot-card-placeholder {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tarot-card-placeholder-face {
+  width: 100%;
+  aspect-ratio: 25 / 44;
+  border-radius: 0.55rem;
+  background: rgb(33 19 47 / 0.5);
+}
+
+.tarot-card-placeholder-name {
+  min-height: calc(var(--font-size-card-name) * 1.4);
+}
+
 .tarot-card {
   --rest-tilt: 0deg;
   --rest-drop: 0px;
@@ -868,6 +924,7 @@ onUnmounted(() => {
 .tarot-card.is-gathering,
 .tarot-card.is-flying {
   z-index: var(--z, 1);
+  will-change: transform, opacity;
 }
 
 .tarot-card.is-gathering {
@@ -877,18 +934,6 @@ onUnmounted(() => {
 .tarot-card.is-flying {
   animation: deal-fly 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--stagger, 0ms);
-}
-
-.tarot-card.is-entering {
-  will-change: transform, opacity;
-}
-
-.tarot-card.is-settled {
-  z-index: 1;
-  opacity: 1;
-  animation: none;
-  transform: rotate(var(--rest-tilt));
-  will-change: auto;
 }
 
 .tarot-board.is-dealing .tarot-card {
@@ -941,6 +986,23 @@ onUnmounted(() => {
   .tarot-layout {
     margin-block: 0;
   }
+
+  .tarot-board {
+    backdrop-filter: none;
+  }
+}
+
+.tarot-board.is-dense {
+  backdrop-filter: none;
+}
+
+.tarot-board.is-dense .tarot-board-glow {
+  display: none;
+}
+
+.tarot-board.is-dense :deep(.outer-orbit),
+.tarot-board.is-dense :deep(.core-halo) {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

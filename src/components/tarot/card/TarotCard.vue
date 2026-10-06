@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { usePreferredReducedMotion } from "@vueuse/core";
-import { motion } from "motion-v";
+import { computed, ref } from "vue";
 import TarotCardBack from "@/components/tarot/card/TarotCardBack.vue";
 import type { TarotCard } from "@/composables/useTarotDeck";
 
@@ -15,29 +13,32 @@ const props = withDefaults(
     faceDown?: boolean;
     /** 略過翻牌與牌名進場 */
     skipMotion?: boolean;
+    /** 大量牌時停用高成本的 3D、陰影與牌背細節 */
+    performanceMode?: boolean;
+    /** 由牌陣共用的系統減少動態設定 */
+    reducedMotion?: boolean;
+    /** 由牌陣共用的 hover 能力偵測 */
+    supportsHover?: boolean;
   }>(),
   {
     revealDelay: 0,
     faceDown: false,
     skipMotion: false,
+    performanceMode: false,
+    reducedMotion: false,
+    supportsHover: false,
   },
 );
 
 /** 尚未抽出，或抽牌時先蓋回，都顯示牌背 */
 const showBack = computed(() => props.faceDown || props.card === null);
-const reducedMotion = usePreferredReducedMotion();
 const isHovered = ref(false);
-const revealInstant = ref(prefersInstant());
-
-function prefersInstant() {
-  return props.skipMotion || reducedMotion.value === "reduce";
-}
-
-watch(showBack, (back) => {
-  if (!back) {
-    revealInstant.value = prefersInstant();
-  }
-});
+const revealInstant = computed(
+  () =>
+    props.skipMotion ||
+    props.performanceMode ||
+    props.reducedMotion,
+);
 
 const tilt = ref({ x: 0, y: 0, gx: 50, gy: 16 });
 
@@ -46,11 +47,16 @@ const tiltStyle = computed(() => ({
   "--ry": `${tilt.value.y}deg`,
   "--gx": `${tilt.value.gx}%`,
   "--gy": `${tilt.value.gy}%`,
+  "--flip-delay": `${showBack.value || revealInstant.value ? 0 : props.revealDelay}s`,
   "--name-delay": `${props.revealDelay + 0.42}s`,
 }));
 
 function onPointerMove(event: PointerEvent) {
-  if (reducedMotion.value === "reduce") {
+  if (
+    props.performanceMode ||
+    !props.supportsHover ||
+    props.reducedMotion
+  ) {
     return;
   }
 
@@ -73,6 +79,10 @@ function onPointerMove(event: PointerEvent) {
 }
 
 function onPointerEnter() {
+  if (props.performanceMode || !props.supportsHover) {
+    return;
+  }
+
   isHovered.value = true;
 }
 
@@ -83,7 +93,14 @@ function onPointerLeave() {
 </script>
 
 <template>
-  <div class="tarot-card-body" :style="tiltStyle">
+  <div
+    class="tarot-card-body"
+    :class="{
+      'is-performance': performanceMode,
+      'is-showing-back': showBack,
+    }"
+    :style="tiltStyle"
+  >
     <div
       class="card-tilt"
       :class="{ 'is-hovered': isHovered }"
@@ -92,19 +109,23 @@ function onPointerLeave() {
       @pointerleave="onPointerLeave"
     >
       <div class="card-scene">
-        <motion.div
+        <div
           class="card-flip"
-          :animate="{
-            rotateY: showBack ? 0 : revealInstant ? -180 : [0, -18, -90, -162, -180],
-          }"
-          :transition="{
-            duration: revealInstant ? 0 : 0.75,
-            delay: showBack || revealInstant ? 0 : revealDelay,
-            ease: [0.2, 0.75, 0.25, 1],
+          :class="{
+            'is-face-up': !showBack,
+            'is-instant': revealInstant,
           }"
         >
-          <div class="card-face card-back" aria-hidden="true">
-            <TarotCardBack :class="{ 'is-hovered': isHovered }" />
+          <div
+            v-if="showBack || !performanceMode"
+            class="card-face card-back"
+            aria-hidden="true"
+          >
+            <TarotCardBack
+              v-if="!performanceMode"
+              :class="{ 'is-hovered': isHovered }"
+            />
+            <div v-else class="card-back-lite" />
           </div>
 
           <div class="card-face card-front">
@@ -116,10 +137,11 @@ function onPointerLeave() {
               :class="{ 'is-reversed': card.reversed }"
               loading="lazy"
               decoding="async"
+              fetchpriority="low"
               draggable="false"
             />
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
 
@@ -198,7 +220,18 @@ function onPointerLeave() {
   position: relative;
   width: 100%;
   height: 100%;
+  transform: rotateY(0deg);
   transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.2, 0.75, 0.25, 1);
+  transition-delay: var(--flip-delay, 0s);
+}
+
+.card-flip.is-face-up {
+  transform: rotateY(-180deg);
+}
+
+.card-flip.is-instant {
+  transition: none;
 }
 
 .card-face {
@@ -239,6 +272,16 @@ function onPointerLeave() {
   transform: rotateY(180deg) translateZ(1px);
 }
 
+.card-back-lite {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgb(218 183 110 / 0.42);
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 28%, rgb(145 93 190 / 0.3), transparent 52%),
+    #21132f;
+}
+
 .card-image {
   display: block;
   width: 100%;
@@ -263,6 +306,45 @@ function onPointerLeave() {
 .card-name.is-revealed {
   animation: name-rise 0.45s ease both;
   animation-delay: var(--name-delay, 0.4s);
+}
+
+.tarot-card-body.is-performance {
+  perspective: none;
+}
+
+.tarot-card-body.is-performance .card-tilt,
+.tarot-card-body.is-performance .card-tilt.is-hovered {
+  transform: none;
+  transition: none;
+}
+
+.tarot-card-body.is-performance .card-tilt::before,
+.tarot-card-body.is-performance .card-front::after {
+  display: none;
+}
+
+.tarot-card-body.is-performance .card-scene {
+  box-shadow: 0 5px 12px rgb(0 0 0 / 0.2);
+  perspective: none;
+}
+
+.tarot-card-body.is-performance .card-flip,
+.tarot-card-body.is-performance .card-flip.is-face-up {
+  transform: none;
+  transform-style: flat;
+  transition: none;
+}
+
+.tarot-card-body.is-performance .card-front {
+  transform: none;
+}
+
+.tarot-card-body.is-performance.is-showing-back .card-front {
+  display: none;
+}
+
+.tarot-card-body.is-performance .card-name {
+  animation: none;
 }
 
 .card-orientation {
@@ -305,6 +387,24 @@ function onPointerLeave() {
   .card-tilt,
   .card-tilt.is-hovered {
     transform: none;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .card-tilt,
+  .card-tilt.is-hovered {
+    transform: none;
+    transition: none;
+  }
+
+  .card-tilt::before,
+  .card-front::after {
+    display: none;
+  }
+
+  .card-scene,
+  .card-tilt.is-hovered .card-scene {
+    box-shadow: 0 6px 14px rgb(0 0 0 / 0.22);
   }
 }
 </style>
