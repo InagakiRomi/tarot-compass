@@ -28,39 +28,97 @@ const emit = defineEmits<{
 
 const rawCount = ref(String(props.modelValue));
 const drawActionRef = ref<HTMLElement | null>(null);
-const countControlRef = ref<HTMLElement | null>(null);
+const stageActionsRef = ref<HTMLElement | null>(null);
+
+let visibilityRequest = 0;
 
 /** 同一個點擊若先 blur 再按抽牌，避免修正後又立刻開抽 */
 let rejectedAt = 0;
 
 watch(
   () => props.modelValue,
-  async (value) => {
+  (value) => {
     rawCount.value = String(value);
-    await nextTick();
-    keepCountControlInView();
   },
 );
 
-function keepCountControlInView() {
-  const el = countControlRef.value;
-  if (!el) return;
+function nextFrame() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
 
-  const rect = el.getBoundingClientRect();
-  const safeTop = 120;
-  const safeBottom = window.innerHeight - 160;
+function scrollPageBy(delta: number) {
+  if (Math.abs(delta) < 0.5) {
+    return;
+  }
 
-  if (rect.top < safeTop || rect.bottom > safeBottom) {
-    el.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
+  const root = document.scrollingElement ?? document.documentElement;
+  const current = root.scrollTop || window.scrollY;
+  const top = Math.max(0, current + delta);
+
+  root.scrollTop = top;
+  window.scrollTo(0, top);
+}
+
+function visibleBounds() {
+  const viewport = window.visualViewport;
+  const top = viewport?.offsetTop ?? 0;
+
+  return {
+    top: top + 12,
+    bottom: top + (viewport?.height ?? window.innerHeight) - 12,
+  };
+}
+
+/**
+ * 牌陣增減列數時，將操作列固定在使用者按下按鈕時的位置。
+ * 等兩個畫面更新週期，確保父層牌陣尺寸與 ResizeObserver 都已完成。
+ */
+async function keepActionsInView(previousTop: number, request: number) {
+  await nextTick();
+  await nextFrame();
+  await nextFrame();
+
+  if (request !== visibilityRequest) {
+    return;
+  }
+
+  const actions = stageActionsRef.value;
+
+  if (!actions) {
+    return;
+  }
+
+  scrollPageBy(actions.getBoundingClientRect().top - previousTop);
+  await nextFrame();
+
+  if (request !== visibilityRequest) {
+    return;
+  }
+
+  const rect = actions.getBoundingClientRect();
+  const bounds = visibleBounds();
+
+  if (rect.height > bounds.bottom - bounds.top) {
+    scrollPageBy(rect.bottom - bounds.bottom);
+  } else if (rect.bottom > bounds.bottom) {
+    scrollPageBy(rect.bottom - bounds.bottom);
+  } else if (rect.top < bounds.top) {
+    scrollPageBy(rect.top - bounds.top);
   }
 }
 
 function commit(value: number) {
+  const previousTop = stageActionsRef.value?.getBoundingClientRect().top;
+  const request = ++visibilityRequest;
+
   emit("update:modelValue", value);
   rawCount.value = String(value);
+
+  if (previousTop !== undefined) {
+    void keepActionsInView(previousTop, request);
+  }
 }
 
 function warnDrawCount() {
@@ -197,8 +255,8 @@ function onDrawClick() {
       <slot />
     </div>
 
-    <div class="stage-actions">
-      <div ref="countControlRef" class="count-field">
+    <div ref="stageActionsRef" class="stage-actions">
+      <div class="count-field">
         <span class="count-label" id="draw-count-label">抽牌數量</span>
         <div class="count-stepper">
           <DrawCountInput
