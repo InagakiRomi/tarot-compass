@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useClipboard } from "@vueuse/core";
 import { storeToRefs } from "pinia";
+import { ref } from "vue";
 import {
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,6 +28,7 @@ import {
 const historyStore = useHistoryStore();
 const { records } = storeToRefs(historyStore);
 const { copy } = useClipboard({ legacy: true });
+const pendingDelete = ref<DrawHistoryRecord | null>(null);
 
 async function copyRecord(record: DrawHistoryRecord) {
   try {
@@ -45,6 +47,23 @@ function confirmClear() {
   historyStore.clearHistory();
   toast.success("已清除歷史紀錄");
 }
+
+function onDeleteDialogOpen(open: boolean) {
+  if (!open) {
+    pendingDelete.value = null;
+  }
+}
+
+function confirmDelete() {
+  const record = pendingDelete.value;
+
+  if (!record) {
+    return;
+  }
+
+  historyStore.removeRecord(record.id);
+  toast.success("已刪除這筆紀錄");
+}
 </script>
 
 <template>
@@ -61,7 +80,11 @@ function confirmClear() {
         <PageOrnament />
 
         <section class="history-board" aria-label="抽牌歷史">
-          <HistoryRecordTable :records="records" @copy="copyRecord" />
+          <HistoryRecordTable
+            :records="records"
+            @copy="copyRecord"
+            @remove="pendingDelete = $event"
+          />
           <div class="history-actions">
             <AlertDialogRoot>
               <AlertDialogTrigger
@@ -88,6 +111,33 @@ function confirmClear() {
                       @click="confirmClear"
                     >
                       確認清除
+                    </AlertDialogAction>
+                  </div>
+                </AlertDialogContent>
+              </AlertDialogPortal>
+            </AlertDialogRoot>
+            <AlertDialogRoot
+              :open="pendingDelete !== null"
+              @update:open="onDeleteDialogOpen"
+            >
+              <AlertDialogPortal>
+                <AlertDialogOverlay class="history-confirm-overlay" />
+                <AlertDialogContent class="history-confirm">
+                  <AlertDialogTitle class="history-confirm-title">
+                    刪除這筆紀錄
+                  </AlertDialogTitle>
+                  <AlertDialogDescription class="history-confirm-note">
+                    刪除後無法復原，這筆抽牌紀錄會從這台裝置消失
+                  </AlertDialogDescription>
+                  <div class="history-confirm-actions">
+                    <AlertDialogCancel class="history-confirm-cancel">
+                      取消
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      class="history-confirm-ok"
+                      @click.capture="confirmDelete"
+                    >
+                      確認刪除
                     </AlertDialogAction>
                   </div>
                 </AlertDialogContent>

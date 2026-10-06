@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Copy } from "@lucide/vue";
+import { Copy, Trash2 } from "@lucide/vue";
 
 import { formatTarotCard } from "@/lib/tarotReading";
 import type { DrawHistoryRecord } from "@/stores/history";
@@ -10,6 +10,7 @@ defineProps<{
 
 const emit = defineEmits<{
   copy: [record: DrawHistoryRecord];
+  remove: [record: DrawHistoryRecord];
 }>();
 
 const drawnAtFormat = new Intl.DateTimeFormat("zh-TW", {
@@ -40,7 +41,7 @@ function formatDrawnAt(value: string) {
           <th data-slot="table-head" class="history-col-names">牌名</th>
           <th data-slot="table-head" class="history-col-count">數量</th>
           <th data-slot="table-head" class="history-col-action">
-            <span class="sr-only">複製</span>
+            <span class="sr-only">操作</span>
           </th>
         </tr>
       </thead>
@@ -66,18 +67,32 @@ function formatDrawnAt(value: string) {
           </td>
           <td data-slot="table-cell" class="history-col-count">{{ record.count }}</td>
           <td data-slot="table-cell" class="history-col-action">
-            <button
-              type="button"
-              class="history-copy"
-              @click="emit('copy', record)"
-            >
-              <Copy
-                class="history-copy-icon"
-                :stroke-width="1.6"
-                aria-hidden="true"
-              />
-              複製
-            </button>
+            <div class="history-row-actions">
+              <button
+                type="button"
+                class="history-copy"
+                @click="emit('copy', record)"
+              >
+                <Copy
+                  class="history-action-icon"
+                  :stroke-width="1.6"
+                  aria-hidden="true"
+                />
+                複製
+              </button>
+              <button
+                type="button"
+                class="history-delete"
+                @click="emit('remove', record)"
+              >
+                <Trash2
+                  class="history-action-icon"
+                  :stroke-width="1.6"
+                  aria-hidden="true"
+                />
+                刪除
+              </button>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -152,11 +167,18 @@ function formatDrawnAt(value: string) {
 }
 
 .history-col-action {
-  width: 6.5rem;
+  width: 7rem;
 }
 
 .history-table :deep([data-slot="table-cell"].history-col-action) {
-  text-align: right;
+  vertical-align: middle;
+}
+
+.history-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
 }
 
 .history-names {
@@ -189,6 +211,7 @@ function formatDrawnAt(value: string) {
   letter-spacing: 0.06em;
   background: transparent;
   cursor: pointer;
+  justify-content: center;
 }
 
 .history-copy:hover,
@@ -199,7 +222,34 @@ function formatDrawnAt(value: string) {
   outline: none;
 }
 
-.history-copy-icon {
+.history-delete {
+  display: inline-flex;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-items: center;
+  height: 2rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgb(196 120 120 / 0.42);
+  border-radius: 999px;
+  color: rgb(232 176 176 / 0.92);
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  background: transparent;
+  cursor: pointer;
+  justify-content: center;
+}
+
+.history-delete:hover,
+.history-delete:focus-visible {
+  border-color: rgb(232 150 150 / 0.78);
+  color: rgb(255 214 214);
+  background: rgb(48 16 22 / 0.45);
+  outline: none;
+}
+
+.history-action-icon {
   width: 15px;
   height: 15px;
   margin-right: 0.35rem;

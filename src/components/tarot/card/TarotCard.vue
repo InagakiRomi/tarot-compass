@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import TarotCardBack from "@/components/tarot/card/TarotCardBack.vue";
+import TarotEmblem from "@/components/tarot/card/TarotEmblem.vue";
 import type { TarotCard } from "@/composables/useTarotDeck";
 
 /** 單張塔羅牌；null 表示尚未翻開，只顯示牌背 */
@@ -125,7 +126,9 @@ function onPointerLeave() {
               v-if="!performanceMode"
               :class="{ 'is-hovered': isHovered }"
             />
-            <div v-else class="card-back-lite" />
+            <div v-else class="card-back-lite">
+              <TarotEmblem class="card-back-lite-emblem" />
+            </div>
           </div>
 
           <div class="card-face card-front">
@@ -273,6 +276,7 @@ function onPointerLeave() {
 }
 
 .card-back-lite {
+  position: relative;
   width: 100%;
   height: 100%;
   border: 1px solid rgb(218 183 110 / 0.42);
@@ -280,6 +284,16 @@ function onPointerLeave() {
   background:
     radial-gradient(circle at 50% 28%, rgb(145 93 190 / 0.3), transparent 52%),
     #21132f;
+}
+
+.card-back-lite-emblem {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 42%;
+  color: var(--tarot-gold-light, #e7c376);
+  opacity: 0.82;
+  transform: translate(-50%, -50%);
 }
 
 .card-image {

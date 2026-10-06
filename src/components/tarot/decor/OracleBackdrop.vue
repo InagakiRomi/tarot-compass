@@ -250,7 +250,7 @@ const corners = ["tl", "tr", "bl", "br"] as const;
 
 .mystic-corner-decoration {
   position: absolute;
-  z-index: 6;
+  z-index: 0;
   color: var(--tarot-gold);
   opacity: 0.72;
   pointer-events: none;

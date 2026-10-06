@@ -103,6 +103,10 @@ export const useHistoryStore = defineStore("history", () => {
     records.value = [entry, ...records.value].slice(0, MAX_HISTORY_RECORDS);
   }
 
+  function removeRecord(id: string) {
+    records.value = records.value.filter((record) => record.id !== id);
+  }
+
   function clearHistory() {
     records.value = [];
   }
@@ -110,6 +114,7 @@ export const useHistoryStore = defineStore("history", () => {
   return {
     records,
     recordDraw,
+    removeRecord,
     clearHistory,
   };
 });

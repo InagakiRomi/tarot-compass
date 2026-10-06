@@ -875,9 +875,8 @@ onUnmounted(() => {
 }
 
 .tarot-card-list.is-dense .tarot-card-row {
-  contain: layout paint style;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 240px;
+  contain: layout style;
+  overflow: visible;
 }
 
 .tarot-card-placeholder {
@@ -889,10 +888,25 @@ onUnmounted(() => {
 }
 
 .tarot-card-placeholder-face {
+  position: relative;
   width: 100%;
   aspect-ratio: 25 / 44;
+  border: 1px solid rgb(218 183 110 / 0.42);
   border-radius: 0.55rem;
-  background: rgb(33 19 47 / 0.5);
+  background:
+    radial-gradient(circle at 50% 28%, rgb(145 93 190 / 0.3), transparent 52%),
+    #21132f;
+}
+
+.tarot-card-placeholder-face::after {
+  content: "";
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 22%;
+  aspect-ratio: 1;
+  border: 1px solid rgb(231 195 118 / 0.72);
+  transform: translate(-50%, -50%) rotate(45deg);
 }
 
 .tarot-card-placeholder-name {

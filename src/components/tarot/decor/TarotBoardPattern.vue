@@ -19,41 +19,43 @@ const orbitPoints = [0, 90, 180, 270] as const;
       :class="`board-corner-${corner}`"
     />
 
-    <div v-if="!performanceMode" class="celestial-circle">
-      <div class="circle-glow" />
+    <div class="celestial-circle" :class="{ 'is-lite': performanceMode }">
+      <template v-if="!performanceMode">
+        <div class="circle-glow" />
 
-      <div class="outer-orbit">
-        <div class="outer-ring" />
+        <div class="outer-orbit">
+          <div class="outer-ring" />
+
+          <span
+            v-for="angle in ticks"
+            :key="angle"
+            class="orbit-tick"
+            :style="{ '--angle': `${angle}deg` }"
+          />
+        </div>
+
+        <div class="middle-ring" />
 
         <span
-          v-for="angle in ticks"
+          v-for="angle in orbitPoints"
           :key="angle"
-          class="orbit-tick"
+          class="orbit-point"
           :style="{ '--angle': `${angle}deg` }"
-        />
-      </div>
+        >
+          <span class="orbit-dot" />
+        </span>
 
-      <div class="middle-ring" />
-
-      <span
-        v-for="angle in orbitPoints"
-        :key="angle"
-        class="orbit-point"
-        :style="{ '--angle': `${angle}deg` }"
-      >
-        <span class="orbit-dot" />
-      </span>
-
-      <span class="axis axis-horizontal" />
-      <span class="axis axis-vertical" />
-      <span class="axis axis-diagonal axis-diagonal-a" />
-      <span class="axis axis-diagonal axis-diagonal-b" />
+        <span class="axis axis-horizontal" />
+        <span class="axis axis-vertical" />
+        <span class="axis axis-diagonal axis-diagonal-a" />
+        <span class="axis axis-diagonal axis-diagonal-b" />
+      </template>
 
       <div class="inner-diamond" />
       <div class="inner-ring" />
 
       <div class="core">
-        <span class="core-halo" />
+        <span v-if="!performanceMode" class="core-halo" />
         <Sparkle class="core-star" :stroke-width="1" />
       </div>
     </div>
@@ -136,6 +138,15 @@ const orbitPoints = [0, 90, 180, 270] as const;
   color: var(--tarot-gold, #d9b56d);
   opacity: 0.72;
   transform: translate(-50%, -50%);
+}
+
+.celestial-circle.is-lite {
+  width: min(18rem, 46%);
+  opacity: 0.84;
+}
+
+.celestial-circle.is-lite .core-star {
+  filter: none;
 }
 
 .circle-glow {
