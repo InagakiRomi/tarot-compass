@@ -42,12 +42,12 @@ const historyStore = useHistoryStore();
 const { deckType, drawCount, skipMotion, cards, maxDrawCount } = storeToRefs(drawStore);
 
 function createSpread(count: number): (TarotCardData | null)[] {
-  return Array.from({ length: count }, () => null);
+  return Array<TarotCardData | null>(count).fill(null);
 }
 
-const availableCards = computed(() => {
-  return deckType.value === "major" ? tarotCards.slice(0, 22) : tarotCards;
-});
+const availableCards = computed(() =>
+  deckType.value === "major" ? tarotCards.slice(0, 22) : tarotCards,
+);
 const drawId = ref(0);
 const isRitual = ref(false);
 const dealPhase = ref<DealPhase>("idle");
@@ -683,23 +683,6 @@ onUnmounted(() => {
 
 <style scoped>
 .tarot-page {
-  --bg-dark: #0d0818;
-  --bg-purple: #181026;
-  --text-muted: #afa4c1;
-
-  --tarot-text: #f1ebfa;
-  --tarot-gold-dim: #8f7346;
-  --tarot-gold: #d2ae66;
-  --tarot-gold-light: #e7c376;
-  --tarot-gold-bright: #f4e3b2;
-
-  --tarot-purple-300: #a47bea;
-  --tarot-purple-400: #985ed6;
-  --tarot-purple-500: #7748c8;
-  --tarot-purple-600: #6940b1;
-
-  --tarot-surface: #1b112b;
-
   position: relative;
   isolation: isolate;
   display: flex;

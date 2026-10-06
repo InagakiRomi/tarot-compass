@@ -184,7 +184,6 @@ function onDrawClick() {
 
     <div v-if="canCopy" class="stage-header">
       <button
-        v-if="canCopy"
         type="button"
         class="copy-result"
         @click="emit('copy')"

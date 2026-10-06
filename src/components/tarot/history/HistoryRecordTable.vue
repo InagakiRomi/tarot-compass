@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { Copy } from "@lucide/vue";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { DrawHistoryRecord } from "@/stores/history";
 
 defineProps<{
@@ -44,27 +35,29 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
 </script>
 
 <template>
-  <div class="history-table">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead class="history-col-time">時間</TableHead>
-          <TableHead class="history-col-names">牌名</TableHead>
-          <TableHead class="history-col-count">數量</TableHead>
-          <TableHead class="history-col-action">
+  <div class="history-table" data-slot="table-container">
+    <table data-slot="table">
+      <thead data-slot="table-header">
+        <tr data-slot="table-row">
+          <th data-slot="table-head" class="history-col-time">時間</th>
+          <th data-slot="table-head" class="history-col-names">牌名</th>
+          <th data-slot="table-head" class="history-col-count">數量</th>
+          <th data-slot="table-head" class="history-col-action">
             <span class="sr-only">複製</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableEmpty v-if="records.length === 0" :colspan="4">
-          還沒有抽牌紀錄
-        </TableEmpty>
-        <TableRow v-for="record in records" :key="record.id">
-          <TableCell class="history-col-time">{{
+          </th>
+        </tr>
+      </thead>
+      <tbody data-slot="table-body">
+        <tr v-if="records.length === 0" data-slot="table-row">
+          <td data-slot="table-cell" colspan="4">
+            <div class="history-empty">還沒有抽牌紀錄</div>
+          </td>
+        </tr>
+        <tr v-for="record in records" :key="record.id" data-slot="table-row">
+          <td data-slot="table-cell" class="history-col-time">{{
             formatDrawnAt(record.drawnAt)
-          }}</TableCell>
-          <TableCell class="history-col-names">
+          }}</td>
+          <td data-slot="table-cell" class="history-col-names">
             <ul class="history-names">
               <li
                 v-for="(card, index) in record.cards"
@@ -73,9 +66,9 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
                 {{ cardLabel(card) }}
               </li>
             </ul>
-          </TableCell>
-          <TableCell class="history-col-count">{{ record.count }}</TableCell>
-          <TableCell class="history-col-action">
+          </td>
+          <td data-slot="table-cell" class="history-col-count">{{ record.count }}</td>
+          <td data-slot="table-cell" class="history-col-action">
             <button
               type="button"
               class="history-copy"
@@ -88,19 +81,20 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
               />
               複製
             </button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
 <style scoped>
-.history-table :deep([data-slot="table-container"]) {
+.history-table {
   overflow: auto;
 }
 
 .history-table :deep([data-slot="table"]) {
+  width: 100%;
   min-width: 36rem;
   border-collapse: collapse;
   color: var(--tarot-text);
@@ -113,6 +107,7 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
 
 .history-table :deep([data-slot="table-row"]) {
   border-color: rgb(210 174 102 / 0.22);
+  transition: background-color 0.15s ease;
 }
 
 .history-table :deep([data-slot="table-row"]:hover) {
@@ -139,6 +134,14 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
   color: var(--tarot-text);
   white-space: normal;
   vertical-align: top;
+}
+
+.history-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 2.5rem;
+  white-space: nowrap;
 }
 
 .history-col-time {

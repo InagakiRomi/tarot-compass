@@ -52,15 +52,8 @@ function shuffle<T>(items: readonly T[]): T[] {
 
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-
-    const current = shuffled[i];
-    const target = shuffled[j];
-
-    if (current === undefined || target === undefined) {
-      continue;
-    }
-
-    shuffled[i] = target;
+    const current = shuffled[i]!;
+    shuffled[i] = shuffled[j]!;
     shuffled[j] = current;
   }
 
@@ -80,7 +73,6 @@ export function useTarotDeck() {
 
   return {
     tarotCards,
-    deckSize: tarotCards.length,
     draw,
   };
 }

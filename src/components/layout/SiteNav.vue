@@ -1,43 +1,24 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { RouterLink, useRoute, type RouteLocationRaw } from "vue-router";
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from "@/components/ui/navigation-menu";
+import { RouterLink } from "vue-router";
 
-type NavLink = {
-  name: string;
-  to: RouteLocationRaw;
-  label: string;
-};
-
-const route = useRoute();
-
-const links: NavLink[] = [
-  { name: "draw-tarot", to: { name: "draw-tarot" }, label: "抽牌" },
-  { name: "history", to: { name: "history" }, label: "歷史紀錄" },
+const links = [
+  { to: "/", label: "抽牌" },
+  { to: "/history", label: "歷史紀錄" },
 ];
-
-const activeName = computed(() => route.name);
 </script>
 
 <template>
   <header class="site-nav">
-    <RouterLink :to="{ name: 'draw-tarot' }" class="site-nav-title">Tarot Compass</RouterLink>
-    <NavigationMenu :viewport="false" class="site-nav-menu" aria-label="頁面">
-      <NavigationMenuList class="site-nav-list">
-        <NavigationMenuItem v-for="link in links" :key="link.name">
-          <NavigationMenuLink as-child :active="activeName === link.name">
-            <RouterLink :to="link.to" class="site-nav-link">
-              {{ link.label }}
-            </RouterLink>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
-      </NavigationMenuList>
-    </NavigationMenu>
+    <RouterLink to="/" class="site-nav-title">Tarot Compass</RouterLink>
+    <nav class="site-nav-menu" aria-label="頁面">
+      <ul class="site-nav-list">
+        <li v-for="link in links" :key="link.to">
+          <RouterLink :to="link.to" class="site-nav-link">
+            {{ link.label }}
+          </RouterLink>
+        </li>
+      </ul>
+    </nav>
     <span class="site-nav-balance" aria-hidden="true">Tarot Compass</span>
   </header>
 </template>
@@ -89,47 +70,41 @@ const activeName = computed(() => route.name);
 }
 
 .site-nav-menu {
-  width: auto;
-  max-width: none;
   min-width: 0;
   height: 100%;
   flex: 1 1 auto;
-}
-
-.site-nav :deep([data-slot="navigation-menu"] > *) {
-  width: 100%;
-  min-width: 0;
-  height: 100%;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
-.site-nav :deep([data-slot="navigation-menu"] > *)::-webkit-scrollbar {
+.site-nav-menu::-webkit-scrollbar {
   display: none;
 }
 
-.site-nav :deep([data-slot="navigation-menu-list"]) {
+.site-nav-list {
+  display: flex;
   width: max-content;
   min-width: 100%;
   height: 100%;
-  flex-wrap: nowrap;
+  align-items: center;
   justify-content: center;
   gap: 0.15rem;
   margin: 0;
   padding-inline: 0.75rem;
+  list-style: none;
 }
 
-.site-nav :deep([data-slot="navigation-menu-item"]) {
+.site-nav-list li {
   flex: 0 0 auto;
 }
 
-.site-nav :deep([data-slot="navigation-menu-link"]) {
+.site-nav-link {
   position: relative;
+  display: flex;
   height: var(--site-nav-height);
+  align-items: center;
   justify-content: center;
   padding: 0 1.15rem;
-  border-radius: 0;
-  background: transparent;
   color: color-mix(in srgb, var(--tarot-text) 70%, var(--tarot-gold-dim));
   font-size: 0.95rem;
   font-weight: 500;
@@ -137,24 +112,19 @@ const activeName = computed(() => route.name);
   white-space: nowrap;
   text-decoration: none;
   outline: none;
-  box-shadow: none;
+  transition: color 0.15s ease;
 }
 
-.site-nav :deep([data-slot="navigation-menu-link"]:hover),
-.site-nav :deep([data-slot="navigation-menu-link"]:focus-visible) {
-  background: transparent;
+.site-nav-link:hover,
+.site-nav-link:focus-visible {
   color: var(--tarot-gold-bright);
 }
 
-.site-nav :deep([data-slot="navigation-menu-link"][data-active]),
-.site-nav :deep([data-slot="navigation-menu-link"][data-active]:hover),
-.site-nav :deep([data-slot="navigation-menu-link"][data-active]:focus-visible) {
-  background: transparent;
+.site-nav-link.router-link-exact-active {
   color: var(--tarot-gold-bright);
-  box-shadow: none;
 }
 
-.site-nav :deep([data-slot="navigation-menu-link"][data-active])::after {
+.site-nav-link.router-link-exact-active::after {
   content: "";
   position: absolute;
   right: 1rem;
@@ -177,12 +147,12 @@ const activeName = computed(() => route.name);
     letter-spacing: 0.08em;
   }
 
-  .site-nav :deep([data-slot="navigation-menu-list"]) {
+  .site-nav-list {
     justify-content: flex-start;
     padding-inline: 0.35rem;
   }
 
-  .site-nav :deep([data-slot="navigation-menu-link"]) {
+  .site-nav-link {
     padding-inline: 0.9rem;
     letter-spacing: 0.06em;
   }

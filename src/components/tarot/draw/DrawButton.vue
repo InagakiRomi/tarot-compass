@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
 import { Sparkle } from "@lucide/vue";
-import { Button } from "@/components/ui/button";
 
 withDefaults(
   defineProps<{
@@ -49,10 +48,9 @@ function handleAnimationEnd(event: AnimationEvent) {
 </script>
 
 <template>
-  <Button
-    class="draw-button relative isolate h-14 w-60 min-w-57.5 overflow-hidden rounded-full border px-[1.35rem] pl-[2.7rem] text-(length:--font-size-button) font-medium leading-none tracking-[0.16em] transition-[transform,box-shadow,border-color,background,color] duration-200 max-[720px]:w-full max-[720px]:min-w-0"
+  <button
+    class="draw-button relative isolate inline-flex h-14 w-60 min-w-57.5 shrink-0 items-center justify-center overflow-hidden whitespace-nowrap rounded-full border px-[1.35rem] pl-[2.7rem] text-(length:--font-size-button) font-medium leading-none tracking-[0.16em] transition-[transform,box-shadow,border-color,background,color] duration-200 max-[720px]:w-full max-[720px]:min-w-0"
     :class="{ 'is-casting': isCasting }"
-    variant="ghost"
     type="button"
     @click="handleClick"
   >
@@ -79,7 +77,7 @@ function handleAnimationEnd(event: AnimationEvent) {
     <span class="draw-label relative z-2 mr-[-0.16em]">
       {{ label }}
     </span>
-  </Button>
+  </button>
 </template>
 
 <style scoped>

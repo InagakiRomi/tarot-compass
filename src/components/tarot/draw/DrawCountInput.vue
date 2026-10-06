@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { Input } from "@/components/ui/input";
-
 defineProps<{
   modelValue: string;
   min: number;
@@ -15,8 +13,10 @@ const emit = defineEmits<{
   increase: [];
 }>();
 
-function onInput(value: string | number) {
-  emit("update:modelValue", String(value));
+function onInput(event: Event) {
+  if (event.target instanceof HTMLInputElement) {
+    emit("update:modelValue", event.target.value);
+  }
 }
 
 function onFocusOut(event: FocusEvent) {
@@ -61,8 +61,8 @@ function onFocus(event: FocusEvent) {
       −
     </button>
 
-    <Input
-      :model-value="modelValue"
+    <input
+      :value="modelValue"
       :min="min"
       :max="max"
       class="draw-count-input"
@@ -70,7 +70,7 @@ function onFocus(event: FocusEvent) {
       autocomplete="off"
       spellcheck="false"
       aria-label="抽牌數量"
-      @update:model-value="onInput"
+      @input="onInput"
       @focus="onFocus"
       @keydown="onEnter"
     />
