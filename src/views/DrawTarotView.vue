@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import {
+  useClipboard,
+  usePreferredReducedMotion,
+  useResizeObserver,
+} from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import { storeToRefs } from "pinia";
 import { toast } from "vue-sonner";
@@ -13,6 +18,7 @@ import {
   useTarotDeck,
   type TarotCard as TarotCardData,
 } from "@/composables/useTarotDeck";
+import { formatTarotReading } from "@/lib/tarotReading";
 import { useDrawStore } from "@/stores/draw";
 import { useHistoryStore } from "@/stores/history";
 
@@ -40,6 +46,7 @@ const { tarotCards, draw } = useTarotDeck();
 const drawStore = useDrawStore();
 const historyStore = useHistoryStore();
 const { deckType, drawCount, skipMotion, cards, maxDrawCount } = storeToRefs(drawStore);
+const { copy } = useClipboard({ legacy: true });
 
 function createSpread(count: number): (TarotCardData | null)[] {
   return Array<TarotCardData | null>(count).fill(null);
@@ -63,10 +70,10 @@ const settled = ref<boolean[]>([]);
 const entering = ref<boolean[]>([]);
 
 let timers: number[] = [];
-let resizeObserver: ResizeObserver | undefined;
 let alive = true;
 
 const isDealing = computed(() => dealPhase.value !== "idle");
+const preferredReducedMotion = usePreferredReducedMotion();
 
 const hasReading = computed(
   () => !isRitual.value && cards.value.some((card) => card !== null),
@@ -540,12 +547,6 @@ function commitDraw(drawn: TarotCardData[]) {
   return oriented;
 }
 
-function formatReading(drawn: TarotCardData[]) {
-  return drawn
-    .map((card) => `${card.cardName}${card.reversed ? "逆位" : "正位"}`)
-    .join("\n");
-}
-
 async function copyResult() {
   const drawn = cards.value.filter((card): card is TarotCardData => card !== null);
 
@@ -555,7 +556,7 @@ async function copyResult() {
   }
 
   try {
-    await navigator.clipboard.writeText(formatReading(drawn));
+    await copy(formatTarotReading(drawn));
     toast.success("已複製抽牌結果");
   } catch {
     toast.error("複製失敗，請再試一次");
@@ -569,38 +570,36 @@ function beginRitual() {
 
   const count = Math.min(maxDrawCount.value, Math.max(MIN_DRAW_COUNT, drawCount.value));
   const reducedMotion =
-    skipMotion.value || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    skipMotion.value || preferredReducedMotion.value === "reduce";
 
   isRitual.value = true;
   clearTimers();
   void startDeal(count, reducedMotion);
 }
 
-onMounted(() => {
+useResizeObserver(listRef, () => {
   const list = listRef.value;
 
-  if (list) {
-    resizeObserver = new ResizeObserver(() => {
-      const width = list.clientWidth;
-
-      if (width > 0) {
-        containerWidth.value = width;
-      }
-
-      if (dealPhase.value === "idle") {
-        applyLayout();
-      }
-    });
-    resizeObserver.observe(list);
+  if (!list) {
+    return;
   }
 
-  applyLayout();
+  const width = list.clientWidth;
+
+  if (width > 0) {
+    containerWidth.value = width;
+  }
+
+  if (dealPhase.value === "idle") {
+    applyLayout();
+  }
 });
+
+onMounted(applyLayout);
 
 onUnmounted(() => {
   alive = false;
   clearTimers();
-  resizeObserver?.disconnect();
 });
 </script>
 

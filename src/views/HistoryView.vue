@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useClipboard } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 import {
   AlertDialogAction,
@@ -16,6 +17,7 @@ import { toast } from "vue-sonner";
 import OracleBackdrop from "@/components/tarot/decor/OracleBackdrop.vue";
 import PageOrnament from "@/components/tarot/decor/PageOrnament.vue";
 import HistoryRecordTable from "@/components/tarot/history/HistoryRecordTable.vue";
+import { formatTarotReading } from "@/lib/tarotReading";
 import {
   MAX_HISTORY_RECORDS,
   useHistoryStore,
@@ -24,16 +26,11 @@ import {
 
 const historyStore = useHistoryStore();
 const { records } = storeToRefs(historyStore);
-
-function formatReading(record: DrawHistoryRecord) {
-  return record.cards
-    .map((card) => `${card.cardName}${card.reversed ? "逆位" : "正位"}`)
-    .join("\n");
-}
+const { copy } = useClipboard({ legacy: true });
 
 async function copyRecord(record: DrawHistoryRecord) {
   try {
-    await navigator.clipboard.writeText(formatReading(record));
+    await copy(formatTarotReading(record.cards));
     toast.success("已複製抽牌結果");
   } catch {
     toast.error("複製失敗，請再試一次");

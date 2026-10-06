@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Copy } from "@lucide/vue";
 
+import { formatTarotCard } from "@/lib/tarotReading";
 import type { DrawHistoryRecord } from "@/stores/history";
 
 defineProps<{
@@ -27,10 +28,6 @@ function formatDrawnAt(value: string) {
   }
 
   return drawnAtFormat.format(date);
-}
-
-function cardLabel(card: DrawHistoryRecord["cards"][number]) {
-  return `${card.cardName}${card.reversed ? "逆位" : "正位"}`;
 }
 </script>
 
@@ -63,7 +60,7 @@ function cardLabel(card: DrawHistoryRecord["cards"][number]) {
                 v-for="(card, index) in record.cards"
                 :key="`${record.id}-${card.cardId}-${index}`"
               >
-                {{ cardLabel(card) }}
+                {{ formatTarotCard(card) }}
               </li>
             </ul>
           </td>

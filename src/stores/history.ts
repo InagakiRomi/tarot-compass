@@ -1,4 +1,4 @@
-import { ref, watch } from "vue";
+import { useLocalStorage } from "@vueuse/core";
 import { defineStore } from "pinia";
 
 const STORAGE_KEY = "tarot-compass.history";
@@ -36,66 +36,55 @@ function toCard(value: HistoryCard): HistoryCard {
   };
 }
 
-function readRecords(): DrawHistoryRecord[] {
-  if (typeof localStorage === "undefined") {
+function normalizeRecords(value: unknown): DrawHistoryRecord[] {
+  if (!Array.isArray(value)) {
     return [];
   }
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
 
-    if (!raw) {
-      return [];
-    }
+      const record = item as Partial<DrawHistoryRecord>;
 
-    const data = JSON.parse(raw);
+      if (typeof record.id !== "string" || typeof record.drawnAt !== "string") {
+        return null;
+      }
 
-    if (!Array.isArray(data)) {
-      return [];
-    }
+      const cards = Array.isArray(record.cards) ? record.cards.filter(isCard).map(toCard) : [];
 
-    return data
-      .map((item) => {
-        if (!item || typeof item !== "object") {
-          return null;
-        }
+      if (cards.length === 0) {
+        return null;
+      }
 
-        const record = item as Partial<DrawHistoryRecord>;
-
-        if (typeof record.id !== "string" || typeof record.drawnAt !== "string") {
-          return null;
-        }
-
-        const cards = Array.isArray(record.cards) ? record.cards.filter(isCard).map(toCard) : [];
-
-        if (cards.length === 0) {
-          return null;
-        }
-
-        return {
-          id: record.id,
-          drawnAt: record.drawnAt,
-          count: cards.length,
-          cards,
-        };
-      })
-      .filter((record): record is DrawHistoryRecord => record !== null)
-      .slice(0, MAX_HISTORY_RECORDS);
-  } catch {
-    return [];
-  }
+      return {
+        id: record.id,
+        drawnAt: record.drawnAt,
+        count: cards.length,
+        cards,
+      };
+    })
+    .filter((record): record is DrawHistoryRecord => record !== null)
+    .slice(0, MAX_HISTORY_RECORDS);
 }
 
 export const useHistoryStore = defineStore("history", () => {
-  const records = ref<DrawHistoryRecord[]>(readRecords());
-
-  watch(
-    records,
-    (next) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  const records = useLocalStorage<DrawHistoryRecord[]>(STORAGE_KEY, [], {
+    listenToStorageChanges: false,
+    writeDefaults: false,
+    serializer: {
+      read: (raw) => {
+        try {
+          return normalizeRecords(JSON.parse(raw));
+        } catch {
+          return [];
+        }
+      },
+      write: JSON.stringify,
     },
-    { deep: true },
-  );
+  });
 
   function recordDraw(cards: HistoryCard[]) {
     const nextCards = cards.filter(isCard).map(toCard);

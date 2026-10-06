@@ -1,5 +1,6 @@
-import { computed, ref, watch } from "vue";
+import { useLocalStorage } from "@vueuse/core";
 import { defineStore } from "pinia";
+import { computed, toRefs, watch } from "vue";
 
 import type { DeckType } from "@/components/tarot/draw/DeckTypeToggle.vue";
 import { tarotCards, type TarotCard } from "@/composables/useTarotDeck";
@@ -51,69 +52,73 @@ function toCard(slot: DrawnSlot | null): TarotCard | null {
   };
 }
 
-function readSnapshot(): DrawSnapshot {
-  const fallback: DrawSnapshot = {
+function createDefaultSnapshot(): DrawSnapshot {
+  return {
     deckType: "minor",
     drawCount: DEFAULT_COUNT,
     skipMotion: false,
     slots: emptySlots(DEFAULT_COUNT),
   };
+}
 
-  if (typeof localStorage === "undefined") {
+function normalizeSnapshot(value: unknown): DrawSnapshot {
+  const fallback = createDefaultSnapshot();
+
+  if (!value || typeof value !== "object") {
     return fallback;
   }
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+  const data = value as Partial<DrawSnapshot>;
+  const deckType = isDeckType(data.deckType) ? data.deckType : fallback.deckType;
+  const max = maxFor(deckType);
+  const count = Number(data.drawCount);
+  const drawCount = Number.isInteger(count)
+    ? Math.min(max, Math.max(MIN_DRAW_COUNT, count))
+    : DEFAULT_COUNT;
+  const incoming = Array.isArray(data.slots) ? data.slots : [];
+  const slots = Array.from({ length: drawCount }, (_, index) => {
+    const slot = incoming[index];
 
-    if (!raw) {
-      return fallback;
+    if (!slot || typeof slot !== "object") {
+      return null;
     }
 
-    const data = JSON.parse(raw) as Partial<DrawSnapshot>;
-    const deckType = isDeckType(data.deckType) ? data.deckType : fallback.deckType;
-    const max = maxFor(deckType);
-    const count = Number(data.drawCount);
-    const drawCount = Number.isInteger(count)
-      ? Math.min(max, Math.max(MIN_DRAW_COUNT, count))
-      : DEFAULT_COUNT;
-    const incoming = Array.isArray(data.slots) ? data.slots : [];
-    const slots = Array.from({ length: drawCount }, (_, index) => {
-      const slot = incoming[index];
+    const cardId = Number(slot.cardId);
 
-      if (!slot || typeof slot !== "object") {
-        return null;
-      }
-
-      const cardId = Number(slot.cardId);
-
-      if (!cardById.has(cardId)) {
-        return null;
-      }
-
-      return {
-        cardId,
-        reversed: Boolean(slot.reversed),
-      };
-    });
+    if (!cardById.has(cardId)) {
+      return null;
+    }
 
     return {
-      deckType,
-      drawCount,
-      skipMotion: Boolean(data.skipMotion),
-      slots,
+      cardId,
+      reversed: Boolean(slot.reversed),
     };
-  } catch {
-    return fallback;
-  }
+  });
+
+  return {
+    deckType,
+    drawCount,
+    skipMotion: Boolean(data.skipMotion),
+    slots,
+  };
 }
 
 export const useDrawStore = defineStore("draw", () => {
-  const snapshot = readSnapshot();
-  const deckType = ref<DeckType>(snapshot.deckType);
-  const drawCount = ref(snapshot.drawCount);
-  const skipMotion = ref(snapshot.skipMotion);
-  const slots = ref<(DrawnSlot | null)[]>(snapshot.slots);
+  const snapshot = useLocalStorage<DrawSnapshot>(STORAGE_KEY, createDefaultSnapshot(), {
+    listenToStorageChanges: false,
+    writeDefaults: false,
+    serializer: {
+      read: (raw) => {
+        try {
+          return normalizeSnapshot(JSON.parse(raw));
+        } catch {
+          return createDefaultSnapshot();
+        }
+      },
+      write: JSON.stringify,
+    },
+  });
+  const { deckType, drawCount, skipMotion, slots } = toRefs(snapshot.value);
 
   const maxDrawCount = computed(() => maxFor(deckType.value));
 
@@ -136,21 +141,6 @@ export const useDrawStore = defineStore("draw", () => {
       drawCount.value = maxDrawCount.value;
     }
   });
-
-  watch(
-    [deckType, drawCount, skipMotion, slots],
-    () => {
-      const payload: DrawSnapshot = {
-        deckType: deckType.value,
-        drawCount: drawCount.value,
-        skipMotion: skipMotion.value,
-        slots: slots.value,
-      };
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    },
-    { deep: true },
-  );
 
   return {
     deckType,
